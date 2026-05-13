@@ -4,10 +4,11 @@
 // ============================================================================
 
 // --- Concrete engine implementation ----------------------------------------
-// `Engine` is exported as the canonical name (alias of DeterministicEngine).
-// `DeterministicEngine` is also exported for callers that prefer the explicit
-// name (e.g. when distinguishing future engine variants).
-export { DeterministicEngine, DeterministicEngine as Engine } from "./runtime";
+// The class is exported under its truthful name. `DeterministicEngine`
+// distinguishes this implementation from any future engine variants.
+// Consumers targeting the contract (e.g. for mocking) import the `Engine`
+// type re-exported below.
+export { DeterministicEngine } from "./runtime";
 export type { EngineDeps } from "./runtime";
 
 // --- Renderers --------------------------------------------------------------
@@ -38,10 +39,10 @@ export type {
 } from "./knowledge";
 
 // --- Contract & domain types ------------------------------------------------
-// The `Engine` interface from engine.ts is re-exported under the name
-// `EngineInterface` to avoid shadowing the class export above. Consumers
-// implementing alternative engines should target EngineInterface.
-export type { Engine as EngineInterface } from "./engine";
+// `Engine` is the interface contract. `DeterministicEngine` (above) is the
+// concrete implementation. No name collision: one is a value, the other a
+// type — they occupy separate namespaces in TypeScript.
+export type { Engine } from "./engine";
 export type {
   Renderer,
   Entitlement,
