@@ -11,6 +11,15 @@
 export { DeterministicEngine } from "./runtime";
 export type { EngineDeps } from "./runtime";
 
+// --- Provenance constants ---------------------------------------------------
+/**
+ * Methodology version string. Audit-bearing — bumped only when the deterministic
+ * rules, thresholds, or regulatory citations in the engine change. Paired with
+ * engine_commit_sha and knowledge_base_hash in EngineDeps to form the full
+ * provenance triple on every SnapshotOutput and ReportOutput.
+ */
+export const METHODOLOGY_VERSION = "v3.1-2026-04";
+
 // --- Renderers --------------------------------------------------------------
 export { SnapshotRenderer, SNAPSHOT_PHRASES, DEFAULT_PHRASE } from "./renderers/snapshot";
 export { ReportRenderer } from "./renderers/report";
