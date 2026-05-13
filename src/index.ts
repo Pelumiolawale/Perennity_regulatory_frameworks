@@ -20,6 +20,19 @@ export type { EngineDeps } from "./runtime";
  */
 export const METHODOLOGY_VERSION = "v3.1-2026-04";
 
+// --- Bundled activities (browser-friendly KB) -------------------------------
+// loadKnowledgeBase uses node:fs + fast-glob and cannot run in browser
+// contexts. BUNDLED_ACTIVITIES is a build-time-resolved Activity[] that
+// browser consumers (Vite/Webpack) can import synchronously. The JSON files
+// in regulatory-knowledge/ remain the canonical source of truth; this
+// re-export is convenience only.
+import eu_tax_climate_8_1 from "../regulatory-knowledge/frameworks/eu_taxonomy_climate/eu_tax_climate_8_1.json";
+import type { Activity as ActivityType } from "./engine";
+
+export const BUNDLED_ACTIVITIES: ActivityType[] = [
+  eu_tax_climate_8_1 as unknown as ActivityType,
+];
+
 // --- Renderers --------------------------------------------------------------
 export { SnapshotRenderer, SNAPSHOT_PHRASES, DEFAULT_PHRASE } from "./renderers/snapshot";
 export { ReportRenderer } from "./renderers/report";
