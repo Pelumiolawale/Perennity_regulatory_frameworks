@@ -11,7 +11,7 @@ import {
   computeKnowledgeBaseHash,
 } from "../index";
 
-const REPO_ROOT = path.resolve(__dirname, "../../../../..");
+const REPO_ROOT = path.resolve(__dirname, "../../..");
 const REAL_KB = path.join(REPO_ROOT, "regulatory-knowledge");
 const REAL_SCHEMA = path.join(REAL_KB, "activity.schema.json");
 const REAL_ACTIVITY = path.join(

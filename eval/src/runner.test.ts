@@ -2,17 +2,17 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { DeterministicEngine } from "../../engine/src/runtime";
+import { DeterministicEngine } from "../../src/runtime";
 import type {
   Activity,
   EngineRun,
   ProjectInput,
-} from "../../engine/src/engine";
+} from "../../src/engine";
 
 const FIXTURES_DIR = resolve(__dirname, "../fixtures");
 const ACTIVITY_PATH = resolve(
   __dirname,
-  "../../../regulatory-knowledge/frameworks/eu_taxonomy_climate/eu_tax_climate_8_1.json",
+  "../../regulatory-knowledge/frameworks/eu_taxonomy_climate/eu_tax_climate_8_1.json",
 );
 
 interface ExpectedProjection {
