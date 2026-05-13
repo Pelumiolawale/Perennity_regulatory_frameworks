@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://perennitybridge.com/schemas/activity.schema.json",
+  "title": "Regulatory Activity",
+  "description": "Structured representation of a single activity/criterion set under a sustainable finance framework. Every framework parsed into the Perennity regulatory knowledge base must satisfy this schema. Designed for primary-source traceability and methodology-version auditability.",
+  "type": "object",
+  "required": [
+    "id",
+    "framework",
+    "framework_version",
+    "framework_source_hash",
+    "activity_code",
+    "activity_name",
+    "environmental_objective",
+    "methodology_version",
+    "effective_date"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Stable internal identifier. Example: eu_tax_climate_8_1"
+    },
+    "framework": {
+      "type": "string",
+      "enum": [
+        "EU_TAXONOMY_CLIMATE",
+        "EU_TAXONOMY_ENVIRONMENTAL",
+        "SFDR",
+        "UK_SDR",
+        "ICMA_GBP",
+        "EU_GBS",
+        "EIB_CBI",
+        "LEED",
+        "BREEAM"
+      ]
+    },
+    "framework_version": {
+      "type": "string",
+      "description": "Canonical version identifier of the framework instrument. Example: Regulation_2021_2139_consolidated_2024"
+    },
+    "framework_source_hash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$",
+      "description": "SHA-256 hash of the canonical source document the data was parsed from. Bump this when the underlying regulation changes."
+    },
+    "activity_code": {
+      "type": "string",
+      "description": "Framework-native activity code. Example: 8.1 for EU Taxonomy data processing."
+    },
+    "activity_name": {
+      "type": "string"
+    },
+    "nace_codes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "NACE Rev. 2 codes mapped to this activity, where applicable."
+    },
+    "environmental_objective": {
+      "type": "string",
+      "enum": [
+        "climate_change_mitigation",
+        "climate_change_adaptation",
+        "water_and_marine_resources",
+        "circular_economy",
+        "pollution_prevention",
+        "biodiversity_and_ecosystems",
+        "not_applicable"
+      ]
+    },
+    "methodology_version": {
+      "type": "string",
+      "pattern": "^v\\d+\\.\\d+$",
+      "description": "Perennity methodology version this activity definition is bound to. Example: v3.1"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date from which this activity definition is in force for new reports."
+    },
+    "supersedes": {
+      "type": "string",
+      "description": "id of a prior activity definition this one replaces (for change-log traceability)."
+    },
+    "substantial_contribution_criteria": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/criterion" }
+    },
+    "dnsh_criteria": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dnsh_criterion" }
+    },
+    "minimum_safeguards": {
+      "type": "object",
+      "properties": {
+        "source_reference": { "type": "string" },
+        "requirements": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "criterion": {
+      "type": "object",
+      "required": [
+        "id",
+        "criterion",
+        "source_reference",
+        "source_text",
+        "requirement_type",
+        "scoring_logic_ref"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "criterion": {
+          "type": "string",
+          "description": "Short canonical name for the criterion."
+        },
+        "source_reference": {
+          "type": "string",
+          "description": "Anchor inside the regulation. Example: Annex_I_Section_8.1_paragraph_2"
+        },
+        "source_text": {
+          "type": "string",
+          "description": "Verbatim regulation text for this criterion. Pulled directly into the paid report as the authoritative quote."
+        },
+        "requirement_type": {
+          "type": "string",
+          "enum": [
+            "numeric_threshold",
+            "compliance_attestation",
+            "qualitative_assessment",
+            "verification_requirement"
+          ]
+        },
+        "applies_to": {
+          "type": "string",
+          "description": "Free-text scoping clause. Example: existing_facilities_built_before_2025"
+        },
+        "threshold_value": { "type": ["number", "null"] },
+        "threshold_operator": {
+          "type": ["string", "null"],
+          "enum": [
+            "less_than",
+            "less_than_or_equal",
+            "greater_than",
+            "greater_than_or_equal",
+            "equal_to",
+            null
+          ]
+        },
+        "threshold_unit": { "type": ["string", "null"] },
+        "threshold_metric": { "type": ["string", "null"] },
+        "verification_requirement": {
+          "type": ["string", "null"],
+          "enum": ["independent_third_party", "self_attestation", "regulator_approved", null]
+        },
+        "verification_frequency_years": { "type": ["integer", "null"] },
+        "data_inputs_required": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/data_input" }
+        },
+        "conditional_on": {
+          "type": ["string", "null"],
+          "description": "Trigger that activates this criterion. Example: water_stressed_region"
+        },
+        "estimation_allowed": {
+          "type": "boolean",
+          "description": "Whether the EU Platform Feb 2025 estimation guidance applies."
+        },
+        "narrative_template_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "References into the DNSH/SC narrative library."
+        },
+        "scoring_logic_ref": {
+          "type": "string",
+          "pattern": "^logic\\.[a-z0-9_]+\\.v\\d+$",
+          "description": "Reference into versioned scoring code. Example: logic.sc_8_1_2.v1"
+        }
+      }
+    },
+    "dnsh_criterion": {
+      "allOf": [
+        { "$ref": "#/$defs/criterion" },
+        {
+          "type": "object",
+          "required": ["objective"],
+          "properties": {
+            "objective": {
+              "type": "string",
+              "enum": [
+                "climate_change_adaptation",
+                "water_and_marine_resources",
+                "circular_economy",
+                "pollution_prevention",
+                "biodiversity_and_ecosystems"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "data_input": {
+      "type": "object",
+      "required": ["field", "type"],
+      "properties": {
+        "field": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["numeric", "boolean", "structured_list", "free_text", "document_reference"]
+        },
+        "measurement_standard": {
+          "type": "string",
+          "description": "Reference to an external measurement standard. Example: EN_50600-4-2"
+        },
+        "reference_document": { "type": "string" },
+        "unit": { "type": "string" },
+        "required": { "type": "boolean", "default": true }
+      }
+    }
+  }
+}

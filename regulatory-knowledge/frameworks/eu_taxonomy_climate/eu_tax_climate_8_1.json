@@ -1,0 +1,129 @@
+{
+  "$schema": "./activity.schema.json",
+  "id": "eu_tax_climate_8_1",
+  "framework": "EU_TAXONOMY_CLIMATE",
+  "framework_version": "Regulation_2021_2139_consolidated_2024",
+  "framework_source_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "activity_code": "8.1",
+  "activity_name": "Data processing, hosting and related activities",
+  "nace_codes": ["J63.11"],
+  "environmental_objective": "climate_change_mitigation",
+  "methodology_version": "v3.1",
+  "effective_date": "2026-04-01",
+
+  "substantial_contribution_criteria": [
+    {
+      "id": "sc_8_1_1_ecocc",
+      "criterion": "european_code_of_conduct_compliance",
+      "source_reference": "Annex_I_Section_8.1_paragraph_1",
+      "source_text": "[VERBATIM TEXT TO BE INSERTED FROM CELEX_32021R2139 ANNEX I SECTION 8.1]",
+      "requirement_type": "compliance_attestation",
+      "verification_requirement": "independent_third_party",
+      "verification_frequency_years": 3,
+      "data_inputs_required": [
+        {
+          "field": "ecocc_practices_implemented",
+          "type": "structured_list",
+          "reference_document": "EU_JRC_ECoCC_v14_2024"
+        },
+        {
+          "field": "last_independent_audit_date",
+          "type": "document_reference",
+          "required": true
+        }
+      ],
+      "estimation_allowed": false,
+      "narrative_template_refs": ["sc_lib.ecocc.dc.v3"],
+      "scoring_logic_ref": "logic.sc_8_1_1.v1"
+    },
+    {
+      "id": "sc_8_1_2_pue_existing",
+      "criterion": "pue_threshold_existing_facilities",
+      "source_reference": "Annex_I_Section_8.1_paragraph_2",
+      "source_text": "[VERBATIM TEXT TO BE INSERTED]",
+      "requirement_type": "numeric_threshold",
+      "applies_to": "existing_facilities_built_before_2025",
+      "threshold_value": 1.5,
+      "threshold_operator": "less_than_or_equal",
+      "threshold_unit": "ratio",
+      "threshold_metric": "annualised_pue",
+      "data_inputs_required": [
+        {
+          "field": "annualised_pue",
+          "type": "numeric",
+          "measurement_standard": "EN_50600-4-2",
+          "unit": "ratio",
+          "required": true
+        }
+      ],
+      "estimation_allowed": false,
+      "narrative_template_refs": ["sc_lib.pue.existing.v2"],
+      "scoring_logic_ref": "logic.sc_8_1_2.v1"
+    }
+  ],
+
+  "dnsh_criteria": [
+    {
+      "id": "dnsh_8_1_adaptation",
+      "objective": "climate_change_adaptation",
+      "criterion": "climate_risk_vulnerability_assessment",
+      "source_reference": "Annex_I_Appendix_A",
+      "source_text": "[VERBATIM TEXT TO BE INSERTED]",
+      "requirement_type": "qualitative_assessment",
+      "data_inputs_required": [
+        {
+          "field": "climate_risk_assessment_completed",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "field": "climate_risk_assessment_methodology",
+          "type": "free_text"
+        }
+      ],
+      "estimation_allowed": true,
+      "narrative_template_refs": ["dnsh_lib.adaptation.dc.v3"],
+      "scoring_logic_ref": "logic.dnsh_adaptation.v1"
+    },
+    {
+      "id": "dnsh_8_1_water",
+      "objective": "water_and_marine_resources",
+      "criterion": "water_use_effectiveness_stressed_region",
+      "source_reference": "Annex_I_Appendix_B",
+      "source_text": "[VERBATIM TEXT TO BE INSERTED]",
+      "requirement_type": "numeric_threshold",
+      "threshold_value": 0.4,
+      "threshold_operator": "less_than_or_equal",
+      "threshold_unit": "litres_per_kwh",
+      "threshold_metric": "wue",
+      "conditional_on": "water_stressed_region",
+      "data_inputs_required": [
+        {
+          "field": "wue_annualised",
+          "type": "numeric",
+          "unit": "litres_per_kwh",
+          "required": true
+        },
+        {
+          "field": "site_water_stress_classification",
+          "type": "free_text",
+          "reference_document": "WRI_Aqueduct_4_0",
+          "required": true
+        }
+      ],
+      "estimation_allowed": true,
+      "narrative_template_refs": ["dnsh_lib.water.stressed.v2"],
+      "scoring_logic_ref": "logic.dnsh_water.v1"
+    }
+  ],
+
+  "minimum_safeguards": {
+    "source_reference": "Article_18_Regulation_2020_852",
+    "requirements": [
+      "OECD_MNE_Guidelines",
+      "UN_Guiding_Principles_on_Business_and_Human_Rights",
+      "ILO_Core_Labour_Conventions",
+      "International_Bill_of_Human_Rights"
+    ]
+  }
+}

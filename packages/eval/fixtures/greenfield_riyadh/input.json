@@ -1,0 +1,14 @@
+{
+  "project_id": "PB-FX-003",
+  "intake_timestamp": "2026-05-01T14:00:00Z",
+  "facility_type": "hyperscale",
+  "jurisdiction": "SA",
+  "facility_status": "design",
+  "build_completion_year": 2027,
+  "data_points": {
+    "climate_risk_assessment_completed": true,
+    "climate_risk_assessment_methodology": "CMIP6 multi-model ensemble analysis, RCP 8.5 scenario, focused on heat and water-stress projections to 2050",
+    "site_water_stress_classification": "Extremely High"
+  },
+  "evidence_documents": []
+}

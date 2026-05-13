@@ -1,0 +1,15 @@
+{
+  "verdicts": {
+    "sc_8_1_1_ecocc": "fail",
+    "sc_8_1_2_pue_existing": "pass",
+    "dnsh_8_1_adaptation": "pass",
+    "dnsh_8_1_water": "not_applicable"
+  },
+  "gap_ids": ["eu_tax_climate_8_1.sc_8_1_1_ecocc"],
+  "scoring_logic_versions": {
+    "sc_8_1_1_ecocc": "v1",
+    "sc_8_1_2_pue_existing": "v1",
+    "dnsh_8_1_adaptation": "v1",
+    "dnsh_8_1_water": "v1"
+  }
+}

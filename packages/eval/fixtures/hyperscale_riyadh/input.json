@@ -1,0 +1,31 @@
+{
+  "project_id": "PB-FX-005",
+  "intake_timestamp": "2026-05-01T18:00:00Z",
+  "facility_type": "hyperscale",
+  "jurisdiction": "SA",
+  "facility_status": "operational",
+  "build_completion_year": 2022,
+  "data_points": {
+    "ecocc_practices_implemented": [
+      "airflow_management",
+      "free_cooling",
+      "heat_reuse",
+      "high_efficiency_ups"
+    ],
+    "last_independent_audit_date": "doc-audit-riyadh-2024",
+    "annualised_pue": 1.42,
+    "climate_risk_assessment_completed": true,
+    "climate_risk_assessment_methodology": "CMIP6 scenario analysis, RCP 8.5, with site-specific heat and water-stress modelling",
+    "site_water_stress_classification": "Extremely High",
+    "wue_annualised": 0.48
+  },
+  "evidence_documents": [
+    {
+      "document_id": "doc-audit-riyadh-2024",
+      "document_type": "independent_audit",
+      "uri": "https://evidence.test/audit-riyadh-2024.pdf",
+      "uploaded_at": "2024-12-01T00:00:00Z",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ]
+}

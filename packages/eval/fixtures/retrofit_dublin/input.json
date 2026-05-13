@@ -1,0 +1,25 @@
+{
+  "project_id": "PB-FX-004",
+  "intake_timestamp": "2026-05-01T16:30:00Z",
+  "facility_type": "colocation",
+  "jurisdiction": "IE",
+  "facility_status": "operational",
+  "build_completion_year": 2010,
+  "data_points": {
+    "ecocc_practices_implemented": ["airflow_management", "free_cooling", "heat_reuse"],
+    "last_independent_audit_date": "doc-audit-dublin-2022",
+    "annualised_pue": 1.45,
+    "climate_risk_assessment_completed": true,
+    "climate_risk_assessment_methodology": "TCFD scenario analysis aligned with EU Adaptation Strategy",
+    "site_water_stress_classification": "Medium-High"
+  },
+  "evidence_documents": [
+    {
+      "document_id": "doc-audit-dublin-2022",
+      "document_type": "independent_audit",
+      "uri": "https://evidence.test/audit-dublin-2022.pdf",
+      "uploaded_at": "2022-01-15T00:00:00Z",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ]
+}
