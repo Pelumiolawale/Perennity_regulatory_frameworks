@@ -24,6 +24,7 @@
     "test": "node --import tsx --test $(find src -name '*.test.ts' | sort)"
   },
   "dependencies": {
+    "@noble/hashes": "^1.8.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "fast-glob": "^3.3.2"

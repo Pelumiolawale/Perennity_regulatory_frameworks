@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha256";
+import { bytesToHex } from "@noble/hashes/utils";
 import type { Activity } from "../engine";
 
 // Deterministic serialization: recursive key-sort, arrays preserved in order,
@@ -37,7 +38,7 @@ export function canonicalStringify(value: unknown): string {
 export function computeKnowledgeBaseHash(activities: Activity[]): string {
   const sorted = [...activities].sort((a, b) => a.id.localeCompare(b.id));
   const payload = sorted.map(canonicalStringify).join("\n");
-  const digest = createHash("sha256").update(payload, "utf8").digest("hex");
+  const digest = bytesToHex(sha256(new TextEncoder().encode(payload)));
   return `sha256:${digest}`;
 }
 
@@ -45,6 +46,6 @@ export function computeKnowledgeBaseHash(activities: Activity[]): string {
 // folded into knowledge_base_hash — keeps activity-set drift and schema drift
 // independently observable in audit metadata.
 export function computeSchemaHash(schemaSource: string): string {
-  const digest = createHash("sha256").update(schemaSource, "utf8").digest("hex");
+  const digest = bytesToHex(sha256(new TextEncoder().encode(schemaSource)));
   return `sha256:${digest}`;
 }
