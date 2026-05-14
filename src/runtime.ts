@@ -1,4 +1,8 @@
-import { randomUUID } from "node:crypto";
+// Use the platform crypto.randomUUID() — available natively in modern Node
+// (14.17+) and all evergreen browsers. Avoids the node:crypto import that
+// otherwise externalizes to {} in browser builds and crashes on first call
+// during snapshot generation.
+const randomUUID = () => globalThis.crypto.randomUUID();
 import type {
   Activity,
   Criterion,
