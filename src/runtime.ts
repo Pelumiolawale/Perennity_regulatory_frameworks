@@ -64,7 +64,12 @@ export class DeterministicEngine implements Engine {
       this.scoreCriterion(c, input),
     );
     // minimum_safeguards has no scoring_logic_ref in the schema; pending its own
-    // logic function. Reported as data_missing so the verdict aggregator surfaces it.
+    // logic function. The field remains on FrameworkResult for renderer-side
+    // display (e.g. Snapshot's "Pending — assessed in paid Report" row) but is
+    // intentionally excluded from aggregateVerdict's input — heatmap aggregation
+    // reflects substantial_contribution + dnsh verdicts only while substantive
+    // safeguards logic is unimplemented. ReportRenderer (Day 5+) will re-aggregate
+    // including safeguards once real safeguards logic lands.
     const minimum_safeguards_verdict: Verdict = "data_missing";
     return {
       framework: activity.framework,
@@ -77,7 +82,6 @@ export class DeterministicEngine implements Engine {
       overall_verdict: aggregateVerdict([
         ...sc_results.map((r) => r.verdict),
         ...dnsh_results.map((r) => r.verdict),
-        minimum_safeguards_verdict,
       ]),
       indicative_score: indicativeScore(sc_results, dnsh_results),
     };
@@ -100,7 +104,7 @@ export class DeterministicEngine implements Engine {
   }
 }
 
-function aggregateVerdict(verdicts: Verdict[]): Verdict {
+export function aggregateVerdict(verdicts: Verdict[]): Verdict {
   if (verdicts.includes("fail")) return "fail";
   if (verdicts.includes("data_missing")) return "data_missing";
   if (verdicts.includes("partial")) return "partial";
