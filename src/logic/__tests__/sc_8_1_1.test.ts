@@ -9,7 +9,9 @@ const criterion: Criterion = {
   source_reference: "Annex_I_Section_8.1_paragraph_1",
   source_text: "...",
   requirement_type: "compliance_attestation",
-  scoring_logic_ref: "logic.sc_8_1_1.v1",
+  verification_requirement: "independent_third_party",
+  verification_frequency_years: 3,
+  scoring_logic_ref: "logic.sc_8_1_1.v2",
 };
 
 function makeProject(opts: {
@@ -28,88 +30,68 @@ function makeProject(opts: {
   };
 }
 
-function run(project: ProjectInput) {
+function run(project: ProjectInput, c: Criterion = criterion) {
   return sc_8_1_1({
-    criterion,
+    criterion: c,
     data_points: project.data_points,
     evidence_documents: project.evidence_documents,
     project,
   });
 }
 
-const independentAudit = (id: string, uploaded_at: string): EvidenceReference => ({
+const auditDoc = (
+  id: string,
+  uploaded_at: string,
+  document_type: "audit_report" | "independent_audit" | "self_attestation" | "engineering_design" = "independent_audit",
+): EvidenceReference => ({
   document_id: id,
-  document_type: "independent_audit",
+  document_type,
   uri: `https://evidence.test/${id}`,
   uploaded_at,
   sha256: "0".repeat(64),
 });
 
 describe("sc_8_1_1 — eCoCC compliance", () => {
-  test("data_missing when both inputs absent", () => {
+  test("data_missing when ecocc_practices_implemented is absent", () => {
     const r = run(makeProject());
     assert.equal(r.verdict, "data_missing");
     assert.match(r.gap_summary, /ecocc_practices_implemented/);
-    assert.match(r.gap_summary, /last_independent_audit_date/);
-    assert.equal(r.scoring_logic_ref, "logic.sc_8_1_1.v1");
+    assert.equal(r.scoring_logic_ref, "logic.sc_8_1_1.v2");
   });
 
-  test("fail when practices list is empty", () => {
+  test("fail when practices list is empty (practices gate dominates even with a fresh audit)", () => {
     const r = run(
       makeProject({
-        data: { ecocc_practices_implemented: [], last_independent_audit_date: "doc-1" },
-        evidence: [independentAudit("doc-1", "2025-06-01T00:00:00Z")],
+        data: { ecocc_practices_implemented: [] },
+        evidence: [auditDoc("doc-1", "2025-06-01T00:00:00Z", "independent_audit")],
       }),
     );
     assert.equal(r.verdict, "fail");
     assert.equal(r.observed_value, 0);
   });
 
-  test("fail when last independent audit is older than 3 years", () => {
+  test("data_missing when no qualifying audit doc in evidence", () => {
     const r = run(
       makeProject({
-        data: {
-          ecocc_practices_implemented: ["airflow_mgmt", "free_cooling"],
-          last_independent_audit_date: "doc-old",
-        },
-        evidence: [independentAudit("doc-old", "2022-01-01T00:00:00Z")],
-        intake: "2026-05-13T00:00:00Z",
-      }),
-    );
-    assert.equal(r.verdict, "fail");
-    assert.match(r.gap_summary, /years ago/);
-  });
-
-  test("partial when audit is recent but not independently performed", () => {
-    const r = run(
-      makeProject({
-        data: {
-          ecocc_practices_implemented: ["airflow_mgmt"],
-          last_independent_audit_date: "doc-self",
-        },
+        data: { ecocc_practices_implemented: ["airflow_mgmt", "free_cooling"] },
         evidence: [
-          {
-            document_id: "doc-self",
-            document_type: "self_attestation",
-            uri: "https://evidence.test/doc-self",
-            uploaded_at: "2025-06-01T00:00:00Z",
-            sha256: "0".repeat(64),
-          },
+          auditDoc("doc-design", "2025-06-01T00:00:00Z", "engineering_design"),
+          auditDoc("doc-self", "2025-06-01T00:00:00Z", "self_attestation"),
         ],
       }),
     );
-    assert.equal(r.verdict, "partial");
-    assert.match(r.gap_summary, /independent third-party/);
+    assert.equal(r.verdict, "data_missing");
+    assert.match(r.gap_summary, /No independent audit document/);
+    assert.match(r.gap_summary, /audit_report or independent_audit/);
   });
 
-  test("pass when practices present and audit is recent + independent", () => {
+  test("pass when practices populated + fresh independent_audit doc", () => {
     const r = run(
       makeProject({
         data: {
           ecocc_practices_implemented: ["airflow_mgmt", "free_cooling", "heat_reuse"],
-          last_independent_audit_date: "doc-good",
         },
-        evidence: [independentAudit("doc-good", "2025-06-01T00:00:00Z")],
+        evidence: [auditDoc("doc-good", "2025-06-01T00:00:00Z", "independent_audit")],
       }),
     );
     assert.equal(r.verdict, "pass");
@@ -117,5 +99,70 @@ describe("sc_8_1_1 — eCoCC compliance", () => {
     assert.deepEqual(r.evidence_refs, ["doc-good"]);
   });
 
-  // estimation_used is not applicable: estimation_allowed=false for this criterion.
+  test("pass when practices populated + fresh audit_report doc (both doc_types qualify)", () => {
+    const r = run(
+      makeProject({
+        data: { ecocc_practices_implemented: ["airflow_mgmt"] },
+        evidence: [auditDoc("doc-ar", "2025-06-01T00:00:00Z", "audit_report")],
+      }),
+    );
+    assert.equal(r.verdict, "pass");
+    assert.deepEqual(r.evidence_refs, ["doc-ar"]);
+    assert.match(r.gap_summary, /audit_report/);
+  });
+
+  test("fail when most recent audit is older than verification_frequency_years", () => {
+    const r = run(
+      makeProject({
+        data: { ecocc_practices_implemented: ["airflow_mgmt", "free_cooling"] },
+        evidence: [auditDoc("doc-old", "2022-01-01T00:00:00Z", "independent_audit")],
+        intake: "2026-05-13T00:00:00Z",
+      }),
+    );
+    assert.equal(r.verdict, "fail");
+    assert.match(r.gap_summary, /older|years old/);
+    assert.deepEqual(r.evidence_refs, ["doc-old"]);
+  });
+
+  test("with two audit docs (one stale + one fresh), engine picks the fresh one", () => {
+    const r = run(
+      makeProject({
+        data: { ecocc_practices_implemented: ["airflow_mgmt"] },
+        evidence: [
+          auditDoc("doc-stale", "2021-01-01T00:00:00Z", "independent_audit"),
+          auditDoc("doc-fresh", "2025-06-01T00:00:00Z", "audit_report"),
+        ],
+        intake: "2026-05-13T00:00:00Z",
+      }),
+    );
+    assert.equal(r.verdict, "pass");
+    assert.deepEqual(r.evidence_refs, ["doc-fresh"]);
+  });
+
+  test("freshness window is parametrized from criterion.verification_frequency_years", () => {
+    const longWindow: Criterion = { ...criterion, verification_frequency_years: 10 };
+    const r = run(
+      makeProject({
+        data: { ecocc_practices_implemented: ["airflow_mgmt"] },
+        evidence: [auditDoc("doc-5yo", "2021-05-13T00:00:00Z", "independent_audit")],
+        intake: "2026-05-13T00:00:00Z",
+      }),
+      longWindow,
+    );
+    assert.equal(r.verdict, "pass");
+  });
+
+  test("falls back to 3-year default when criterion.verification_frequency_years is absent", () => {
+    const noWindow: Criterion = { ...criterion };
+    delete (noWindow as { verification_frequency_years?: number | null }).verification_frequency_years;
+    const r = run(
+      makeProject({
+        data: { ecocc_practices_implemented: ["airflow_mgmt"] },
+        evidence: [auditDoc("doc-4yo", "2022-01-01T00:00:00Z", "independent_audit")],
+        intake: "2026-05-13T00:00:00Z",
+      }),
+      noWindow,
+    );
+    assert.equal(r.verdict, "fail");
+  });
 });

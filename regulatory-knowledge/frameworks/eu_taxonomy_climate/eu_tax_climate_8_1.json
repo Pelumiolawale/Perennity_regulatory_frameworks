@@ -34,7 +34,7 @@
       ],
       "estimation_allowed": false,
       "narrative_template_refs": ["sc_lib.ecocc.dc.v3"],
-      "scoring_logic_ref": "logic.sc_8_1_1.v1"
+      "scoring_logic_ref": "logic.sc_8_1_1.v2"
     },
     {
       "id": "sc_8_1_2_pue_existing",

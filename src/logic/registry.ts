@@ -5,7 +5,7 @@ import { dnsh_adaptation } from "./dnsh_adaptation";
 import { dnsh_water } from "./dnsh_water";
 
 const registry: ReadonlyMap<string, LogicFn> = new Map<string, LogicFn>([
-  ["logic.sc_8_1_1.v1", sc_8_1_1],
+  ["logic.sc_8_1_1.v2", sc_8_1_1],
   ["logic.sc_8_1_2.v1", sc_8_1_2],
   ["logic.dnsh_adaptation.v1", dnsh_adaptation],
   ["logic.dnsh_water.v1", dnsh_water],
