@@ -78,28 +78,20 @@ export class ReportRenderer implements Renderer<ReportOutput> {
   }
 
   private frameworksApplied(run: EngineRun): ReportSection {
-    const lines: string[] = [];
-    const references: SourceReference[] = [];
-    for (const fr of run.framework_results) {
-      lines.push(
+    // Source-text excerpts are not duplicated here — they're attached to each
+    // verdict in evidencePresented(). This section is the one-line per-activity
+    // summary only. Previously this method also pushed an excerpt per
+    // criterion; the PDF generator rendered that AND the same excerpts on the
+    // Evidence Presented page, doubling the report length. See engine v0.2.1.
+    const lines = run.framework_results.map(
+      (fr) =>
         `${fr.framework} ${fr.framework_version} — activity ${fr.activity_id}, overall verdict: ${fr.overall_verdict}.`,
-      );
-      const activity = this.activitiesById.get(fr.activity_id);
-      if (activity) {
-        for (const c of allCriteria(activity)) {
-          references.push({
-            framework: fr.framework,
-            source_reference: c.source_reference,
-            source_text_excerpt: c.source_text,
-          });
-        }
-      }
-    }
+    );
     return {
       section_id: "frameworks_applied",
       heading: "Frameworks Applied",
       narrative: lines.join(" "),
-      references,
+      references: [],
     };
   }
 
