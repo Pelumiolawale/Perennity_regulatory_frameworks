@@ -17,7 +17,13 @@
     "climate_risk_assessment_completed": true,
     "climate_risk_assessment_methodology": "TCFD-aligned scenario analysis using IPCC AR6 RCP 8.5",
     "site_water_stress_classification": "Low",
-    "wue_annualised": 0.25
+    "wue_annualised": 0.25,
+    "circular_economy_compliance_items": [
+      "ecodesign_2009_125",
+      "rohs_2011_65",
+      "waste_management_plan",
+      "weee_endoflife_2012_19"
+    ]
   },
   "evidence_documents": [
     {

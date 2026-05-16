@@ -2,12 +2,18 @@ import type { LogicFn } from "./types";
 import { sc_8_1_1 } from "./sc_8_1_1";
 import { sc_8_1_2 } from "./sc_8_1_2";
 import { dnsh_adaptation } from "./dnsh_adaptation";
+import { dnsh_8_1_biodiversity } from "./dnsh_8_1_biodiversity";
+import { dnsh_8_1_circular_economy } from "./dnsh_8_1_circular_economy";
+import { dnsh_8_1_pollution } from "./dnsh_8_1_pollution";
 import { dnsh_water } from "./dnsh_water";
 
 const registry: ReadonlyMap<string, LogicFn> = new Map<string, LogicFn>([
   ["logic.sc_8_1_1.v2", sc_8_1_1],
   ["logic.sc_8_1_2.v1", sc_8_1_2],
   ["logic.dnsh_adaptation.v1", dnsh_adaptation],
+  ["logic.dnsh_8_1_biodiversity.v1", dnsh_8_1_biodiversity],
+  ["logic.dnsh_8_1_circular_economy.v1", dnsh_8_1_circular_economy],
+  ["logic.dnsh_8_1_pollution.v1", dnsh_8_1_pollution],
   ["logic.dnsh_water.v1", dnsh_water],
 ]);
 

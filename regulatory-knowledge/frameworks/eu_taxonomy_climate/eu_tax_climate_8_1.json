@@ -114,6 +114,47 @@
       "estimation_allowed": true,
       "narrative_template_refs": ["dnsh_lib.water.stressed.v2"],
       "scoring_logic_ref": "logic.dnsh_water.v1"
+    },
+    {
+      "id": "dnsh_8_1_circular_economy",
+      "objective": "circular_economy",
+      "criterion": "ecodesign_rohs_weee_compliance",
+      "source_reference": "Annex_I_Section_8.1_DNSH_paragraph_4",
+      "source_text": "The equipment used meets the requirements laid down in Directive 2009/125/EC for servers and data storage products. The equipment used does not contain the restricted substances listed in Annex II to Directive 2011/65/EU of the European Parliament and of the Council, except where the concentration values by weight in homogeneous materials do not exceed the maximum values listed in that Annex. A waste management plan is in place and ensures maximal recycling at end of life of electrical and electronic equipment, including through contractual agreements with recycling partners, reflection in financial projections or official project documentation.\n\nAt its end of life, the equipment undergoes preparation for reuse, recovery or recycling operations, or proper treatment, including the removal of all fluids and a selective treatment in accordance with Annex VII to Directive 2012/19/EU of the European Parliament and of the Council.",
+      "requirement_type": "compliance_attestation",
+      "data_inputs_required": [
+        {
+          "field": "circular_economy_compliance_items",
+          "type": "structured_list",
+          "reference_document": "EU_Directives_2009_125_2011_65_2012_19",
+          "required": true
+        }
+      ],
+      "estimation_allowed": false,
+      "narrative_template_refs": ["dnsh_lib.circular_economy.dc.v1"],
+      "scoring_logic_ref": "logic.dnsh_8_1_circular_economy.v1"
+    },
+    {
+      "id": "dnsh_8_1_pollution",
+      "objective": "pollution_prevention",
+      "criterion": "dnsh_not_applicable_per_section_8_1",
+      "source_reference": "Annex_I_Section_8.1_DNSH_paragraph_5",
+      "source_text": "N/A",
+      "requirement_type": "qualitative_assessment",
+      "estimation_allowed": false,
+      "narrative_template_refs": [],
+      "scoring_logic_ref": "logic.dnsh_8_1_pollution.v1"
+    },
+    {
+      "id": "dnsh_8_1_biodiversity",
+      "objective": "biodiversity_and_ecosystems",
+      "criterion": "dnsh_not_applicable_per_section_8_1",
+      "source_reference": "Annex_I_Section_8.1_DNSH_paragraph_6",
+      "source_text": "N/A",
+      "requirement_type": "qualitative_assessment",
+      "estimation_allowed": false,
+      "narrative_template_refs": [],
+      "scoring_logic_ref": "logic.dnsh_8_1_biodiversity.v1"
     }
   ],
 
