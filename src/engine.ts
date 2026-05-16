@@ -27,11 +27,14 @@ export interface Activity {
   activity_name: string;
   nace_codes?: string[];
   environmental_objective: EnvironmentalObjective;
-  methodology_version: string; // e.g. "v3.1"
+  methodology_version: string; // e.g. "v3.2"
+  methodology_vintage?: string; // e.g. "May 2026"
   effective_date: string;
   supersedes?: string;
   substantial_contribution_criteria?: Criterion[];
   dnsh_criteria?: DNSHCriterion[];
+  methodology_criteria?: Criterion[];
+  safeguards_criteria?: Criterion[];
   minimum_safeguards?: MinimumSafeguards;
 }
 
@@ -69,17 +72,29 @@ export interface Criterion {
   verification_requirement?: VerificationRequirement | null;
   verification_frequency_years?: number | null;
   data_inputs_required?: DataInput[];
+  data_points_required?: string[];
   conditional_on?: string | null;
   estimation_allowed?: boolean;
   narrative_template_refs?: string[];
   scoring_logic_ref: string; // points into versioned scoring library
+
+  // v0.2.0 / methodology v3.2 additions
+  authority_level?: 1 | 2 | 3;
+  authority_source?: string;
+  calibration_references?: string[];
+  snapshot_inclusion?: boolean;
+  depends_on?: string[];
+  framework_applicability?: string[];
+  render_paths?: ("snapshot" | "paid_report")[];
 }
 
 export type RequirementType =
   | "numeric_threshold"
   | "compliance_attestation"
   | "qualitative_assessment"
-  | "verification_requirement";
+  | "verification_requirement"
+  | "benchmarking"
+  | "rollup";
 
 export type ThresholdOperator =
   | "less_than"
@@ -142,7 +157,14 @@ export interface EvidenceReference {
 // 2. ENGINE OUTPUT — the full result, before any renderer touches it
 // ----------------------------------------------------------------------------
 
-export type Verdict = "pass" | "partial" | "fail" | "not_applicable" | "data_missing";
+export type Verdict =
+  | "pass"
+  | "partial"
+  | "fail"
+  | "not_applicable"
+  | "data_missing"
+  | "banded"
+  | "deprecated";
 
 export interface CriterionResult {
   criterion_id: string;
@@ -155,6 +177,17 @@ export interface CriterionResult {
   scoring_logic_ref: string; // for audit trail
   scoring_logic_version: string;
   estimation_used?: boolean; // EU Platform Feb 2025 estimation flag
+
+  // v0.2.0 additions: authority-level provenance, banded results, rollup
+  authority_level?: 1 | 2 | 3;
+  band_label?: string;
+  band_score?: number;
+  new_build_read?: { band_label: string; band_score: number } | null;
+  climate_k1?: number;
+  climate_label?: "cool" | "warm";
+  country_code?: string;
+  contributing_pillars?: { criterion_id: string; verdict: Verdict }[];
+  missing_items?: string[];
 }
 
 export interface FrameworkResult {
@@ -164,6 +197,8 @@ export interface FrameworkResult {
   activity_id: string;
   sc_results: CriterionResult[];
   dnsh_results: CriterionResult[];
+  safeguards_results?: CriterionResult[];
+  methodology_results?: CriterionResult[];
   minimum_safeguards_verdict: Verdict;
   overall_verdict: Verdict;
   indicative_score: number; // 0-100, banded by renderer

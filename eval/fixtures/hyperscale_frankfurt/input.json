@@ -14,6 +14,13 @@
     ],
     "last_independent_audit_date": "doc-audit-frankfurt-2024",
     "annualised_pue": 1.32,
+    "pue_actual": 1.32,
+    "country_code": "DE",
+    "build_year": 2020,
+    "pue_measurement_methodology_declared": "EN_50600_4_2",
+    "pue_measurement_category": "category_2",
+    "pue_measurement_boundary_documented": true,
+    "pue_reporting_basis": "annualised",
     "climate_risk_assessment_completed": true,
     "climate_risk_assessment_methodology": "TCFD-aligned scenario analysis using IPCC AR6 RCP 8.5",
     "site_water_stress_classification": "Low",
@@ -23,6 +30,27 @@
       "rohs_2011_65",
       "waste_management_plan",
       "weee_endoflife_2012_19"
+    ],
+    "human_rights_compliance_items": [
+      "human_rights_policy_published",
+      "due_diligence_process_operational",
+      "grievance_mechanism_operational",
+      "ilo_core_conventions_compliance",
+      "no_ungc_violations_24m"
+    ],
+    "bribery_corruption_compliance_items": [
+      "anti_bribery_policy_published",
+      "anti_bribery_training_programme",
+      "no_bribery_convictions_24m"
+    ],
+    "taxation_compliance_items": [
+      "tax_governance_policy_published",
+      "no_tax_evasion_findings_24m",
+      "country_by_country_reporting_or_below_threshold"
+    ],
+    "fair_competition_compliance_items": [
+      "competition_policy_published",
+      "no_competition_law_breaches_24m"
     ]
   },
   "evidence_documents": [

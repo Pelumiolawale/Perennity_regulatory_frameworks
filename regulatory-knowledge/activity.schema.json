@@ -71,7 +71,11 @@
     "methodology_version": {
       "type": "string",
       "pattern": "^v\\d+\\.\\d+$",
-      "description": "Perennity methodology version this activity definition is bound to. Example: v3.1"
+      "description": "Perennity methodology version this activity definition is bound to. Example: v3.2"
+    },
+    "methodology_vintage": {
+      "type": "string",
+      "description": "Human-readable vintage of the methodology version. Example: May 2026."
     },
     "effective_date": {
       "type": "string",
@@ -90,8 +94,19 @@
       "type": "array",
       "items": { "$ref": "#/$defs/dnsh_criterion" }
     },
+    "methodology_criteria": {
+      "type": "array",
+      "description": "Perennity Bridge benchmarking criteria (authority_level 2). Render only on the paid report; never contribute to alignment verdict.",
+      "items": { "$ref": "#/$defs/criterion" }
+    },
+    "safeguards_criteria": {
+      "type": "array",
+      "description": "Minimum-safeguards criteria per Regulation (EU) 2020/852 Article 18. Currently attached under Activity 8.1; will move to framework-level once SFDR / EuGBS frameworks land. TODO: hoist when multi-framework KB lands.",
+      "items": { "$ref": "#/$defs/criterion" }
+    },
     "minimum_safeguards": {
       "type": "object",
+      "description": "Legacy declarative-only safeguards summary; superseded by safeguards_criteria from v3.2 onward. Retained for schema-compat on prior fixtures.",
       "properties": {
         "source_reference": { "type": "string" },
         "requirements": {
@@ -135,7 +150,9 @@
             "numeric_threshold",
             "compliance_attestation",
             "qualitative_assessment",
-            "verification_requirement"
+            "verification_requirement",
+            "benchmarking",
+            "rollup"
           ]
         },
         "applies_to": {
@@ -182,6 +199,44 @@
           "type": "string",
           "pattern": "^logic\\.[a-z0-9_]+\\.v\\d+$",
           "description": "Reference into versioned scoring code. Example: logic.sc_8_1_2.v1"
+        },
+        "authority_level": {
+          "type": "integer",
+          "enum": [1, 2, 3],
+          "description": "1 = regulatory attestation; 2 = Perennity Bridge methodology; 3 = informational. Drives renderer routing and heatmap aggregation."
+        },
+        "authority_source": {
+          "type": "string",
+          "description": "Free-text citation for the authority backing this criterion."
+        },
+        "calibration_references": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "External datasets / surveys used to calibrate the bands for a benchmarking criterion."
+        },
+        "snapshot_inclusion": {
+          "type": "boolean",
+          "description": "If false, the criterion never appears in the free snapshot output (independent of authority_level)."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Criterion ids that must be scored before this one. The engine resolves dependencies and passes prior results in context."
+        },
+        "framework_applicability": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Which frameworks treat this criterion as applicable. Example: [eu_taxonomy_aligned, sfdr_article_9, eu_gbs]."
+        },
+        "render_paths": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["snapshot", "paid_report"] },
+          "description": "Renderer paths where this criterion may appear. Defaults to both when omitted."
+        },
+        "data_points_required": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Flat list of data_points keys expected on ProjectInput.data_points. Used by intake form generation."
         }
       }
     },

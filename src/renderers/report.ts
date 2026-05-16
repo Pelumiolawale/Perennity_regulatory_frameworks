@@ -108,17 +108,28 @@ export class ReportRenderer implements Renderer<ReportOutput> {
     const references: SourceReference[] = [];
     for (const fr of run.framework_results) {
       const activity = this.activitiesById.get(fr.activity_id);
-      for (const r of [...fr.sc_results, ...fr.dnsh_results]) {
+      const all = [
+        ...fr.sc_results,
+        ...fr.dnsh_results,
+        ...(fr.safeguards_results ?? []),
+        ...(fr.methodology_results ?? []),
+      ];
+      for (const r of all) {
         const observed = r.observed_value !== undefined && r.observed_value !== null
           ? `, observed: ${String(r.observed_value)}`
           : "";
         const threshold = r.threshold_value !== undefined && r.threshold_value !== null
           ? `, threshold: ${r.threshold_value}`
           : "";
-        lines.push(
-          `Criterion ${r.criterion_id} — verdict ${r.verdict}${observed}${threshold}. ${r.gap_summary}`,
-        );
         const c = findCriterion(activity, r.criterion_id);
+        const authority = authorityLabel(c?.authority_level ?? r.authority_level ?? 1);
+        const banded =
+          r.verdict === "banded" && r.band_label
+            ? `, band: ${r.band_label.replace(/_/g, " ")} (score ${r.band_score ?? "-"}, climate K1=${r.climate_k1 ?? "-"})${r.new_build_read ? `, new-build read: ${r.new_build_read.band_label.replace(/_/g, " ")} (score ${r.new_build_read.band_score})` : ""}`
+            : "";
+        lines.push(
+          `[${authority}] Criterion ${r.criterion_id} — verdict ${r.verdict}${observed}${threshold}${banded}. ${r.gap_summary}`,
+        );
         if (c) {
           references.push({
             framework: fr.framework,
@@ -192,10 +203,18 @@ function allCriteria(activity: Activity): Criterion[] {
   return [
     ...(activity.substantial_contribution_criteria ?? []),
     ...(activity.dnsh_criteria ?? []),
+    ...(activity.safeguards_criteria ?? []),
+    ...(activity.methodology_criteria ?? []),
   ];
 }
 
 function findCriterion(activity: Activity | undefined, id: string): Criterion | undefined {
   if (!activity) return undefined;
   return allCriteria(activity).find((c) => c.id === id);
+}
+
+function authorityLabel(level: 1 | 2 | 3): "Regulatory" | "Perennity Bridge methodology" | "Informational" {
+  if (level === 1) return "Regulatory";
+  if (level === 2) return "Perennity Bridge methodology";
+  return "Informational";
 }

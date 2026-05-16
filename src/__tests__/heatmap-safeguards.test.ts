@@ -6,18 +6,17 @@ import { DeterministicEngine, aggregateVerdict } from "../runtime";
 import type { Activity, ProjectInput } from "../engine";
 
 // ============================================================================
-// Heatmap aggregation must EXCLUDE minimum_safeguards_verdict.
+// Heatmap aggregation contract — v0.2.0 / methodology v3.2.
 //
-// Contract: per-framework overall_verdict (the value that becomes
-// SnapshotOutput.heatmap[].verdict via SnapshotRenderer's collapseVerdict)
-// reflects substantial_contribution + dnsh verdicts ONLY. minimum_safeguards
-// is reported on FrameworkResult for renderer-side display but is not part of
-// the aggregation while substantive safeguards logic is unimplemented.
+// Pre-v0.2.0: safeguards was hardcoded "data_missing" and EXCLUDED from
+// aggregation (so heatmap didn't collapse to "partial" for every run). The
+// exclusion was a temporary unblock — see prior commit log.
 //
-// If this test ever fails, the heatmap will collapse to "partial" / "fail"
-// whenever safeguards isn't "pass" — which is always today, since safeguards
-// is hardcoded "data_missing". That would be a user-visible regression
-// (Day 3 report flagged the symptom).
+// As of v0.2.0, safeguards is substantive (four pillars + rollup), and the
+// rollup verdict contributes to the heatmap. The new exclusion rule is
+// authority_level: criteria with authority_level !== 1 (e.g. the Perennity
+// pue_performance_band benchmark, level 2) do NOT contribute to alignment
+// routing. Heatmap aggregation = all authority_level=1 verdicts.
 // ============================================================================
 
 describe("aggregateVerdict — contract", () => {
@@ -45,34 +44,10 @@ describe("aggregateVerdict — contract", () => {
     assert.equal(aggregateVerdict(["pass", "not_applicable", "pass"]), "pass");
   });
 
-  // The CORE safeguards-exclusion proof: the function is a generic aggregator
-  // that operates on its input set. The fix at the call site (scoreActivity in
-  // runtime.ts) excludes minimum_safeguards_verdict from the input passed here.
-  // If safeguards (always "data_missing") were ever included, the result would
-  // collapse to "data_missing" even for an all-pass SC+DNSH run. This pair of
-  // assertions locks the call-site contract.
-  test("excluding 'data_missing' from input keeps the verdict 'pass'", () => {
-    // What the call site passes today: SC + DNSH verdicts only.
-    assert.equal(aggregateVerdict(["pass", "pass", "pass", "pass"]), "pass");
-    // What it WOULD pass if safeguards were re-included (regression shape):
-    assert.equal(aggregateVerdict(["pass", "pass", "pass", "pass", "data_missing"]), "data_missing");
-  });
-
-  test("excluding 'fail' from input keeps the verdict 'pass'", () => {
-    assert.equal(aggregateVerdict(["pass", "pass", "pass", "pass"]), "pass");
-    // Regression shape if a "fail"-flavoured safeguards verdict ever leaked in:
-    assert.equal(aggregateVerdict(["pass", "pass", "pass", "pass", "fail"]), "fail");
+  test("fail still dominates data_missing", () => {
+    assert.equal(aggregateVerdict(["pass", "data_missing", "fail"]), "fail");
   });
 });
-
-// ----------------------------------------------------------------------------
-// Integration test — exercises the actual scoreActivity → aggregateVerdict path
-// against a fixture where all SC pass, DNSH water is not_applicable, DNSH
-// adaptation passes, and safeguards is the engine-default "data_missing".
-//
-// Pre-fix this returned overall_verdict === "data_missing" (heatmap "partial").
-// Post-fix it returns "pass" (heatmap "pass").
-// ----------------------------------------------------------------------------
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const ACTIVITY_PATH = path.join(
@@ -84,15 +59,15 @@ const INPUT_PATH = path.join(
   "eval/fixtures/hyperscale_frankfurt/input.json",
 );
 
-describe("scoreActivity heatmap excludes safeguards (integration)", () => {
-  test("all-pass SC + DNSH + 'data_missing' safeguards → overall_verdict === 'pass'", async () => {
+describe("scoreActivity heatmap — integration (v3.2)", () => {
+  test("fully populated fixture (SC + DNSH + all four safeguards pillars) → overall_verdict 'pass'", async () => {
     const activity = JSON.parse(readFileSync(ACTIVITY_PATH, "utf8")) as Activity;
     const input = JSON.parse(readFileSync(INPUT_PATH, "utf8")) as ProjectInput;
 
     const engine = new DeterministicEngine({
       engine_commit_sha: "test",
       knowledge_base_hash: "sha256:test",
-      methodology_version: "v3.1-test",
+      methodology_version: "v3.2-test",
       now: () => "2026-05-13T00:00:00Z",
       generateId: () => "run-safeguards-test",
     });
@@ -100,24 +75,36 @@ describe("scoreActivity heatmap excludes safeguards (integration)", () => {
     const run = await engine.run(input, [activity]);
     const fr = run.framework_results[0];
 
-    // Sanity-check the fixture: SC and DNSH should all pass (water = n/a)
+    // SC all pass
     assert.ok(
       fr.sc_results.every((r) => r.verdict === "pass"),
-      `expected all SC to pass; got ${JSON.stringify(fr.sc_results.map((r) => r.verdict))}`,
+      `expected all SC to pass; got ${JSON.stringify(fr.sc_results.map((r) => ({ id: r.criterion_id, verdict: r.verdict })))}`,
     );
+    // DNSH all pass / not_applicable
     assert.ok(
       fr.dnsh_results.every((r) => r.verdict === "pass" || r.verdict === "not_applicable"),
       `expected DNSH to be pass/n_a; got ${JSON.stringify(fr.dnsh_results.map((r) => r.verdict))}`,
     );
+    // Safeguards rollup populated and pass
+    assert.equal(fr.minimum_safeguards_verdict, "pass");
 
-    // Safeguards remains "data_missing" — unchanged
-    assert.equal(fr.minimum_safeguards_verdict, "data_missing");
+    const rollup = (fr.safeguards_results ?? []).find((r) => r.criterion_id === "minimum_safeguards");
+    assert.ok(rollup, "expected the safeguards rollup criterion to be scored");
+    assert.equal(rollup.verdict, "pass");
+    assert.equal(rollup.contributing_pillars?.length, 4);
 
-    // The contract: overall_verdict is "pass" despite safeguards being "data_missing"
+    // Overall verdict is pass — the four pillars all pass, rollup passes,
+    // SC/DNSH all pass.
     assert.equal(
       fr.overall_verdict,
       "pass",
-      `heatmap aggregation must exclude safeguards; got overall_verdict=${fr.overall_verdict}`,
+      `expected overall_verdict 'pass' under v3.2; got ${fr.overall_verdict}`,
     );
+
+    // pue_performance_band (authority_level 2) does NOT contribute to overall_verdict.
+    const band = (fr.methodology_results ?? []).find((r) => r.criterion_id === "pue_performance_band");
+    assert.ok(band, "expected the pue_performance_band methodology criterion to be scored");
+    assert.equal(band.verdict, "banded");
+    assert.equal(band.authority_level, 2);
   });
 });

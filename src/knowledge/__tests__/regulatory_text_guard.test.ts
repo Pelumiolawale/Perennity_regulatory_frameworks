@@ -6,16 +6,26 @@ import { loadKnowledgeBase } from "../index";
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 const REAL_KB = path.join(REPO_ROOT, "regulatory-knowledge");
 
-// Criterion ids whose source_text is allowed to still carry the placeholder
-// because the criterion is intentionally deferred to a follow-up commit (the
-// PUE 1.5 threshold in sc_8_1_2_pue_existing is not in Regulation (EU)
-// 2021/2139 Annex I Section 8.1 — it requires a substantive re-anchoring
-// decision, not a verbatim text fill).
-const PLACEHOLDER_ALLOWLIST = new Set<string>(["sc_8_1_2_pue_existing"]);
+// As of v0.2.0 / methodology v3.2 (P0 #5 close-out), no criterion ships a
+// placeholder source_text. The PUE 1.5 threshold was re-anchored to
+// measurement compliance citing Reg 2021/2139 §8.1 ¶1 + ECoCC §9.3.5 (the
+// last placeholder in the KB). The allowlist is now structurally empty and
+// the test asserts both emptiness AND placeholder absence so any regression
+// re-introducing a placeholder must also re-introduce an explicit allowlist
+// entry — making the gap visible in code review.
+const PLACEHOLDER_ALLOWLIST = new Set<string>([]);
 
 const PLACEHOLDER_MARKERS = ["VERBATIM TEXT TO BE INSERTED", "[VERBATIM"];
 
 describe("regulatory text guard — no placeholders in shipped source_text", () => {
+  test("allowlist is empty (structural close-out of P0 #5)", () => {
+    assert.equal(
+      PLACEHOLDER_ALLOWLIST.size,
+      0,
+      "PLACEHOLDER_ALLOWLIST should be empty as of v3.2 — re-anchor any new placeholders to verbatim regulatory text instead of allowlisting them.",
+    );
+  });
+
   test("every criterion's source_text is verbatim regulatory text (allowlist applied)", async () => {
     const kb = await loadKnowledgeBase({ rootDir: REAL_KB });
 
@@ -25,6 +35,8 @@ describe("regulatory text guard — no placeholders in shipped source_text", () 
       const all = [
         ...(activity.substantial_contribution_criteria ?? []),
         ...(activity.dnsh_criteria ?? []),
+        ...(activity.safeguards_criteria ?? []),
+        ...(activity.methodology_criteria ?? []),
       ];
       for (const c of all) {
         if (PLACEHOLDER_ALLOWLIST.has(c.id)) continue;

@@ -12,13 +12,16 @@ export { DeterministicEngine } from "./runtime";
 export type { EngineDeps } from "./runtime";
 
 // --- Provenance constants ---------------------------------------------------
-/**
- * Methodology version string. Audit-bearing — bumped only when the deterministic
- * rules, thresholds, or regulatory citations in the engine change. Paired with
- * engine_commit_sha and knowledge_base_hash in EngineDeps to form the full
- * provenance triple on every SnapshotOutput and ReportOutput.
- */
-export const METHODOLOGY_VERSION = "v3.1-2026-04";
+// Re-exported from src/lib/methodologyVersion.ts (single source of truth).
+// Bumped only when the deterministic rules, thresholds, or regulatory citations
+// in the engine change. Paired with engine_commit_sha and knowledge_base_hash
+// in EngineDeps to form the full provenance triple on every SnapshotOutput and
+// ReportOutput.
+export {
+  METHODOLOGY_VERSION,
+  METHODOLOGY_VINTAGE,
+  METHODOLOGY_VERSION_FULL,
+} from "./lib/methodologyVersion";
 
 // --- Bundled activities (browser-friendly KB) -------------------------------
 // loadKnowledgeBase uses node:fs + fast-glob and cannot run in browser

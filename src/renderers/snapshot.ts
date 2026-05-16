@@ -25,12 +25,22 @@ export const SNAPSHOT_PHRASES: SnapshotPhraseTable = {
     minor:
       "Information about European Code of Conduct practices has not yet been provided.",
   },
+  // v3.1 criterion id retained for stored runs in IndexedDB; v3.2 uses
+  // sc_8_1_2_pue_measurement_compliance.
   sc_8_1_2_pue_existing: {
     critical:
       "Power Usage Effectiveness is materially worse than the level required for existing data centres.",
     material:
       "Power Usage Effectiveness is close to, but does not meet, the level required for existing data centres.",
     minor: "Annualised Power Usage Effectiveness has not yet been reported.",
+  },
+  sc_8_1_2_pue_measurement_compliance: {
+    critical:
+      "Your data centre does not yet evidence PUE measurement compliance to the EN 50600-4-2 / ISO/IEC 30134-2 standards.",
+    material:
+      "PUE measurement compliance is only partially evidenced; one of the five required items is outstanding.",
+    minor:
+      "Information about PUE measurement methodology, category, boundary, reporting basis, or independent audit has not yet been provided.",
   },
   dnsh_8_1_adaptation: {
     critical:
@@ -47,6 +57,22 @@ export const SNAPSHOT_PHRASES: SnapshotPhraseTable = {
       "Water Use Effectiveness is close to, but does not meet, the level required for this water-stressed location.",
     minor:
       "Information about site water use and water-stress classification has not yet been provided.",
+  },
+  dnsh_8_1_circular_economy: {
+    critical:
+      "Equipment and end-of-life arrangements do not yet evidence compliance with the EU circular-economy directives (Ecodesign, RoHS, WEEE).",
+    material:
+      "Circular-economy compliance is only partially evidenced; one or more directives remain unconfirmed.",
+    minor:
+      "Information about circular-economy compliance (Ecodesign, RoHS, WEEE) has not yet been provided.",
+  },
+  minimum_safeguards: {
+    critical:
+      "Minimum safeguards under Article 18 are not met on one or more pillars (human rights, bribery, taxation, fair competition).",
+    material:
+      "Minimum safeguards under Article 18 are only partially evidenced on one or more pillars.",
+    minor:
+      "Information about minimum-safeguards compliance under Article 18 has not yet been provided.",
   },
 };
 
