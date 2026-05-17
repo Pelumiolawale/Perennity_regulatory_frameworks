@@ -136,4 +136,51 @@ describe("ReportRenderer", () => {
     assert.equal(out.ic_defence_pack.pack_version, "v1");
     assert.deepEqual(out.ic_defence_pack.questions, []);
   });
+
+  test("pue_summary is undefined when no PUE measurement compliance criterion was scored", async () => {
+    const out = await renderer.render(run);
+    assert.equal(out.pue_summary, undefined);
+  });
+
+  test("pue_summary populates declared block from data_points and verdict block from CriterionResult", async () => {
+    const pueRun: EngineRun = {
+      ...run,
+      project_input: {
+        ...run.project_input,
+        data_points: {
+          pue_measurement_methodology_declared: "EN_50600_4_2",
+          pue_measurement_category: "category_2",
+          pue_measurement_boundary_documented: true,
+          pue_reporting_basis: "annualised",
+        },
+      },
+      framework_results: [
+        {
+          ...run.framework_results[0],
+          methodology_results: [
+            {
+              criterion_id: "sc_8_1_2_pue_measurement_compliance",
+              verdict: "partial",
+              gap_summary: "Four of five items confirmed; audit doc stale.",
+              evidence_refs: ["doc1", "doc2"],
+              scoring_logic_ref: "logic.sc_8_1_2_pue_measurement_compliance.v1",
+              scoring_logic_version: "v1",
+              authority_level: 1,
+              missing_items: ["independent_audit_within_3_years"],
+            },
+          ],
+        },
+      ],
+    };
+    const out = await renderer.render(pueRun);
+    assert.ok(out.pue_summary, "expected pue_summary to be populated");
+    assert.equal(out.pue_summary.declared.methodology, "EN_50600_4_2");
+    assert.equal(out.pue_summary.declared.category, "category_2");
+    assert.equal(out.pue_summary.declared.boundary_documented, true);
+    assert.equal(out.pue_summary.declared.reporting_basis, "annualised");
+    assert.equal(out.pue_summary.verdict.label, "partial");
+    assert.equal(out.pue_summary.verdict.evidence_refs_count, 2);
+    assert.deepEqual(out.pue_summary.verdict.missing_items, ["independent_audit_within_3_years"]);
+    assert.equal(out.pue_summary.verdict.authority_level, 1);
+  });
 });

@@ -287,8 +287,15 @@ export interface SnapshotOutput {
 }
 
 export interface HeatmapCell {
-  framework: Framework;
-  verdict: "pass" | "partial" | "fail";
+  framework: Framework | "minimum_safeguards";
+  verdict: "pass" | "partial" | "fail" | "data_missing";
+  authority_level?: 1 | 2 | 3;
+  pillar_verdicts?: PillarVerdict[];
+}
+
+export interface PillarVerdict {
+  pillar_id: "human_rights" | "bribery_corruption" | "taxation" | "fair_competition";
+  verdict: Verdict;
 }
 
 export interface SnapshotGap {
@@ -322,8 +329,30 @@ export interface ReportOutput {
   sections: ReportSection[];
   evidence_log: EvidenceLogEntry[];
   ic_defence_pack: ICDefencePack;
+  pue_summary?: PUESummary;
   disclaimer: string; // same Article 26 disclaimer
   generated_at: string;
+}
+
+// Structured PUE measurement compliance block. Surfaced in the paid Report PDF
+// as a side-by-side render (declared intake vs. engine verdict). The verdict
+// object is a focused subset of CriterionResult — we deliberately do NOT echo
+// scoring_logic_ref / scoring_logic_version / observed_value here, since the
+// PDF section is a defence-brief artefact, not an audit dump.
+export interface PUESummary {
+  declared: {
+    methodology: string | null;
+    category: string | null;
+    boundary_documented: boolean | null;
+    reporting_basis: string | null;
+  };
+  verdict: {
+    label: Verdict;
+    gap_summary: string;
+    missing_items: string[];
+    evidence_refs_count: number;
+    authority_level?: 1 | 2 | 3;
+  };
 }
 
 export interface Signatory {

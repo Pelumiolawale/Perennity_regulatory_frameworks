@@ -1,10 +1,12 @@
 import type {
   Activity,
   Criterion,
+  CriterionResult,
   EngineRun,
   EvidenceLogEntry,
   FrameworkResult,
   ICDefencePack,
+  PUESummary,
   Renderer,
   ReportOutput,
   ReportSection,
@@ -51,6 +53,7 @@ export class ReportRenderer implements Renderer<ReportOutput> {
       sections: this.buildSections(run),
       evidence_log: this.buildEvidenceLog(run),
       ic_defence_pack: this.buildDefencePack(),
+      pue_summary: buildPueSummary(run),
       disclaimer: this.disclaimer,
       generated_at: this.now(),
     };
@@ -209,4 +212,40 @@ function authorityLabel(level: 1 | 2 | 3): "Regulatory" | "Perennity Bridge meth
   if (level === 1) return "Regulatory";
   if (level === 2) return "Perennity Bridge methodology";
   return "Informational";
+}
+
+function buildPueSummary(run: EngineRun): PUESummary | undefined {
+  let pueResult: CriterionResult | undefined;
+  for (const fr of run.framework_results) {
+    pueResult = [...(fr.methodology_results ?? []), ...fr.sc_results].find(
+      (r) => r.criterion_id === "sc_8_1_2_pue_measurement_compliance",
+    );
+    if (pueResult) break;
+  }
+  if (!pueResult) return undefined;
+
+  const dp = run.project_input.data_points;
+  return {
+    declared: {
+      methodology: stringOrNull(dp.pue_measurement_methodology_declared),
+      category: stringOrNull(dp.pue_measurement_category),
+      boundary_documented: booleanOrNull(dp.pue_measurement_boundary_documented),
+      reporting_basis: stringOrNull(dp.pue_reporting_basis),
+    },
+    verdict: {
+      label: pueResult.verdict,
+      gap_summary: pueResult.gap_summary,
+      missing_items: pueResult.missing_items ?? [],
+      evidence_refs_count: pueResult.evidence_refs.length,
+      authority_level: pueResult.authority_level,
+    },
+  };
+}
+
+function stringOrNull(v: unknown): string | null {
+  return typeof v === "string" ? v : null;
+}
+
+function booleanOrNull(v: unknown): boolean | null {
+  return typeof v === "boolean" ? v : null;
 }

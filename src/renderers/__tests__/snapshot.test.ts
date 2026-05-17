@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { SnapshotRenderer } from "../snapshot";
-import type { EngineRun, FrameworkResult, GapItem } from "../../engine";
+import type { CriterionResult, EngineRun, FrameworkResult, GapItem, Verdict } from "../../engine";
 
 function makeRun(fr: Partial<FrameworkResult> = {}, gaps: GapItem[] = []): EngineRun {
   const framework_result: FrameworkResult = {
@@ -114,5 +114,102 @@ describe("SnapshotRenderer — behavior", () => {
     ];
     const s = await renderer.render(makeRun({}, gaps));
     assert.match(s.gap_list[0].one_sentence_description, /Required inputs/);
+  });
+});
+
+function pillarResult(criterion_id: string, verdict: Verdict): CriterionResult {
+  return {
+    criterion_id,
+    verdict,
+    gap_summary: `stub ${criterion_id}`,
+    evidence_refs: [],
+    scoring_logic_ref: `logic.${criterion_id}.v1`,
+    scoring_logic_version: "v1",
+    authority_level: 1,
+  };
+}
+
+describe("SnapshotRenderer — minimum_safeguards heatmap cell", () => {
+  test("appends a safeguards cell after framework cells with pillar_verdicts derived from contributing_pillars", async () => {
+    const rollup: CriterionResult = {
+      criterion_id: "minimum_safeguards",
+      verdict: "pass",
+      gap_summary: "all pillars pass",
+      evidence_refs: [],
+      scoring_logic_ref: "logic.minimum_safeguards_rollup.v1",
+      scoring_logic_version: "v1",
+      authority_level: 1,
+      contributing_pillars: [
+        { criterion_id: "safeguards_human_rights", verdict: "pass" },
+        { criterion_id: "safeguards_bribery_corruption", verdict: "pass" },
+        { criterion_id: "safeguards_taxation", verdict: "partial" },
+        { criterion_id: "safeguards_fair_competition", verdict: "pass" },
+      ],
+    };
+    const s = await renderer.render(
+      makeRun({
+        safeguards_results: [
+          pillarResult("safeguards_human_rights", "pass"),
+          pillarResult("safeguards_bribery_corruption", "pass"),
+          pillarResult("safeguards_taxation", "partial"),
+          pillarResult("safeguards_fair_competition", "pass"),
+          rollup,
+        ],
+        minimum_safeguards_verdict: "partial",
+      }),
+    );
+
+    const sg = s.heatmap.find((c) => c.framework === "minimum_safeguards");
+    assert.ok(sg, "expected a minimum_safeguards cell in the heatmap");
+    assert.equal(sg.verdict, "partial");
+    assert.equal(sg.authority_level, 1);
+    assert.equal(sg.pillar_verdicts?.length, 4);
+    const taxation = sg.pillar_verdicts?.find((p) => p.pillar_id === "taxation");
+    assert.equal(taxation?.verdict, "partial");
+  });
+
+  test("safeguards cell preserves data_missing (distinct from partial)", async () => {
+    const s = await renderer.render(
+      makeRun({
+        safeguards_results: [
+          {
+            criterion_id: "minimum_safeguards",
+            verdict: "data_missing",
+            gap_summary: "no inputs",
+            evidence_refs: [],
+            scoring_logic_ref: "logic.minimum_safeguards_rollup.v1",
+            scoring_logic_version: "v1",
+            authority_level: 1,
+            contributing_pillars: [],
+          },
+        ],
+        minimum_safeguards_verdict: "data_missing",
+      }),
+    );
+    const sg = s.heatmap.find((c) => c.framework === "minimum_safeguards");
+    assert.equal(sg?.verdict, "data_missing");
+  });
+
+  test("safeguards cell omitted when all frameworks are not_applicable", async () => {
+    const s = await renderer.render(makeRun({ overall_verdict: "not_applicable" }));
+    assert.equal(s.heatmap.length, 0);
+  });
+
+  test("falls back to deriving pillar_verdicts from safeguards_results when contributing_pillars absent", async () => {
+    const s = await renderer.render(
+      makeRun({
+        safeguards_results: [
+          pillarResult("safeguards_human_rights", "pass"),
+          pillarResult("safeguards_bribery_corruption", "fail"),
+          pillarResult("safeguards_taxation", "pass"),
+          pillarResult("safeguards_fair_competition", "pass"),
+        ],
+        minimum_safeguards_verdict: "fail",
+      }),
+    );
+    const sg = s.heatmap.find((c) => c.framework === "minimum_safeguards");
+    assert.equal(sg?.pillar_verdicts?.length, 4);
+    const bribery = sg?.pillar_verdicts?.find((p) => p.pillar_id === "bribery_corruption");
+    assert.equal(bribery?.verdict, "fail");
   });
 });

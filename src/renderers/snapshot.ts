@@ -1,13 +1,22 @@
 import type {
+  CriterionResult,
   EngineRun,
   FrameworkResult,
   GapItem,
   HeatmapCell,
+  PillarVerdict,
   Renderer,
   SnapshotGap,
   SnapshotOutput,
   Verdict,
 } from "../engine";
+
+const PILLAR_IDS: PillarVerdict["pillar_id"][] = [
+  "human_rights",
+  "bribery_corruption",
+  "taxation",
+  "fair_competition",
+];
 
 export type Severity = GapItem["severity"];
 export type SnapshotPhraseTable = Record<string, Record<Severity, string>>;
@@ -119,12 +128,14 @@ export class SnapshotRenderer implements Renderer<SnapshotOutput> {
   }
 
   private buildHeatmap(frs: FrameworkResult[]): HeatmapCell[] {
-    return frs
+    const frameworkCells: HeatmapCell[] = frs
       .filter((fr) => fr.overall_verdict !== "not_applicable")
       .map((fr) => ({
         framework: fr.framework,
         verdict: collapseVerdict(fr.overall_verdict),
       }));
+    const safeguardsCell = buildSafeguardsCell(frs);
+    return safeguardsCell ? [...frameworkCells, safeguardsCell] : frameworkCells;
   }
 
   private buildGapList(gaps: GapItem[]): SnapshotGap[] {
@@ -159,4 +170,61 @@ function collapseVerdict(v: Verdict): "pass" | "partial" | "fail" {
   if (v === "fail") return "fail";
   // partial / data_missing both collapse to "partial" — IC-voice "not green yet".
   return "partial";
+}
+
+// Safeguards cell preserves data_missing as a distinct state. The free-tier
+// snapshot's job is to communicate "you haven't given us the evidence yet" as
+// a different signal from "the evidence you gave us doesn't quite meet the bar."
+function collapseSafeguardsVerdict(v: Verdict): "pass" | "partial" | "fail" | "data_missing" {
+  if (v === "pass") return "pass";
+  if (v === "fail") return "fail";
+  if (v === "data_missing") return "data_missing";
+  return "partial";
+}
+
+function buildSafeguardsCell(frs: FrameworkResult[]): HeatmapCell | null {
+  const fr = frs.find((f) => f.overall_verdict !== "not_applicable");
+  if (!fr) return null;
+  const rollup = (fr.safeguards_results ?? []).find((r) => r.criterion_id === "minimum_safeguards");
+  return {
+    framework: "minimum_safeguards",
+    verdict: collapseSafeguardsVerdict(fr.minimum_safeguards_verdict),
+    authority_level: rollup?.authority_level,
+    pillar_verdicts: derivePillarVerdicts(rollup, fr.safeguards_results),
+  };
+}
+
+function derivePillarVerdicts(
+  rollup: CriterionResult | undefined,
+  allSafeguardsResults: CriterionResult[] | undefined,
+): PillarVerdict[] | undefined {
+  // Prefer rollup's contributing_pillars (canonical per minimum_safeguards_rollup.ts).
+  if (rollup?.contributing_pillars && rollup.contributing_pillars.length > 0) {
+    const byPillar = new Map<string, Verdict>();
+    for (const p of rollup.contributing_pillars) {
+      byPillar.set(stripSafeguardsPrefix(p.criterion_id), p.verdict);
+    }
+    return PILLAR_IDS.map((id) => ({
+      pillar_id: id,
+      verdict: byPillar.get(id) ?? "data_missing",
+    }));
+  }
+  // Fallback: derive from safeguards_results by criterion_id prefix.
+  if (allSafeguardsResults && allSafeguardsResults.length > 0) {
+    const byPillar = new Map<string, Verdict>();
+    for (const r of allSafeguardsResults) {
+      if (r.criterion_id === "minimum_safeguards") continue;
+      byPillar.set(stripSafeguardsPrefix(r.criterion_id), r.verdict);
+    }
+    if (byPillar.size === 0) return undefined;
+    return PILLAR_IDS.map((id) => ({
+      pillar_id: id,
+      verdict: byPillar.get(id) ?? "data_missing",
+    }));
+  }
+  return undefined;
+}
+
+function stripSafeguardsPrefix(criterionId: string): string {
+  return criterionId.replace(/^safeguards_/, "");
 }

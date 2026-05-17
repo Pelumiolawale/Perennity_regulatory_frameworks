@@ -46,7 +46,17 @@ const EXPECTED_SNAPSHOT_KEYS = [
   "run_id",
 ];
 
-const EXPECTED_HEATMAP_CELL_KEYS = ["framework", "verdict"];
+// Required keys on every heatmap cell. Optional keys (subset check below)
+// vary per cell — e.g. the minimum_safeguards cell carries pillar_verdicts +
+// authority_level; framework cells typically don't.
+const REQUIRED_HEATMAP_CELL_KEYS = ["framework", "verdict"];
+const ALLOWED_HEATMAP_CELL_KEYS = [
+  "framework",
+  "verdict",
+  "authority_level",
+  "pillar_verdicts",
+];
+const ALLOWED_PILLAR_VERDICT_KEYS = ["pillar_id", "verdict"];
 const EXPECTED_SNAPSHOT_GAP_KEYS = ["gap_id", "one_sentence_description"];
 
 // Property names that must NEVER appear anywhere in the SnapshotOutput tree.
@@ -213,11 +223,28 @@ describe("SnapshotRenderer — STRUCTURAL GATE (do not skip, do not relax)", () 
       "SnapshotOutput shape drifted from the allowlist — update the type AND this test together",
     );
     for (const cell of snapshot.heatmap) {
-      assert.deepEqual(
-        Object.keys(cell).sort(),
-        EXPECTED_HEATMAP_CELL_KEYS,
-        "HeatmapCell shape drifted from the allowlist",
-      );
+      const keys = Object.keys(cell);
+      for (const required of REQUIRED_HEATMAP_CELL_KEYS) {
+        assert.ok(
+          keys.includes(required),
+          `HeatmapCell missing required key "${required}"`,
+        );
+      }
+      for (const k of keys) {
+        assert.ok(
+          ALLOWED_HEATMAP_CELL_KEYS.includes(k),
+          `HeatmapCell contains key "${k}" not in the allowlist — update the type AND this test together`,
+        );
+      }
+      if ("pillar_verdicts" in cell && cell.pillar_verdicts) {
+        for (const pv of cell.pillar_verdicts) {
+          assert.deepEqual(
+            Object.keys(pv).sort(),
+            ALLOWED_PILLAR_VERDICT_KEYS,
+            "PillarVerdict shape drifted from the allowlist",
+          );
+        }
+      }
     }
     for (const gap of snapshot.gap_list) {
       assert.deepEqual(
