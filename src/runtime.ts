@@ -68,13 +68,23 @@ export class DeterministicEngine implements Engine {
     // pathological ProjectInput that happens to be inside a wrapper.
     const projectInput: ProjectInput =
       "project" in input && !("project_id" in input) ? input.project : (input as ProjectInput);
-    // Filter to activity_aligned. Other archetypes are skipped silently for
-    // now — Phase 1 (SFDR) and Phase 3 (ICMA) commits add archetype-specific
-    // scoring paths and at that point this filter will become a dispatch.
-    const activities: Activity[] = frameworks.filter(
-      (f): f is ActivityAlignedFramework =>
-        f.archetype === undefined || f.archetype === "activity_aligned",
-    );
+    // Partition frameworks by archetype: activity_aligned get scored;
+    // product_label and issuance_framework are skipped with a non-fatal
+    // warning until Phase 1 (SFDR) / Phase 3 (ICMA) add their scoring
+    // paths. The warning surfaces on EngineRun.warnings — a programmatic
+    // channel the consuming app can read — rather than console.warn so
+    // tests and server contexts can observe it cleanly.
+    const activities: Activity[] = [];
+    const warnings: string[] = [];
+    for (const f of frameworks) {
+      if (f.archetype === undefined || f.archetype === "activity_aligned") {
+        activities.push(f as ActivityAlignedFramework);
+      } else {
+        warnings.push(
+          `Framework "${f.id}" declares archetype="${f.archetype}" but product-label and issuance-framework scoring is not implemented yet (Phase 1 / Phase 3 work). The framework will be skipped.`,
+        );
+      }
+    }
     const framework_results = activities.map((a) => this.scoreActivity(a, projectInput));
     return {
       run_id: this.generateId(),
@@ -85,6 +95,7 @@ export class DeterministicEngine implements Engine {
       project_input: projectInput,
       framework_results,
       gap_list: synthesizeGaps(framework_results),
+      ...(warnings.length > 0 ? { warnings } : {}),
     };
   }
 

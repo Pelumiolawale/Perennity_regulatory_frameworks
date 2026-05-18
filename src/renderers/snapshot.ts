@@ -128,11 +128,18 @@ export class SnapshotRenderer implements Renderer<SnapshotOutput> {
   }
 
   private buildHeatmap(frs: FrameworkResult[]): HeatmapCell[] {
+    // Every FrameworkResult scored by the runtime today is activity_aligned
+    // — Engine.run filters non-activity frameworks out (Phase 0/0.3 warning
+    // path) and only activity-aligned scoring exists. When Phase 1 (SFDR)
+    // and Phase 3 (ICMA) scoring land, FrameworkResult will need to carry
+    // the archetype through from the source framework definition. Until
+    // then, hardcoding "activity_aligned" here is correct.
     const frameworkCells: HeatmapCell[] = frs
       .filter((fr) => fr.overall_verdict !== "not_applicable")
       .map((fr) => ({
         framework: fr.framework,
         verdict: collapseVerdict(fr.overall_verdict),
+        archetype: "activity_aligned",
       }));
     const safeguardsCell = buildSafeguardsCell(frs);
     return safeguardsCell ? [...frameworkCells, safeguardsCell] : frameworkCells;

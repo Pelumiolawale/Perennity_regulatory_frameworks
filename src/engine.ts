@@ -14,6 +14,13 @@
 // strategy. The engine is the diligenceable IP for the Ask C exit thesis.
 // ============================================================================
 
+// FrameworkArchetype is defined in src/framework.ts. Imported as a type-only
+// import here so HeatmapCell.archetype below can reference it. The cycle
+// (framework.ts depends on Activity from this file; this file depends on
+// FrameworkArchetype from framework.ts) is fine at the type level — TS
+// elides type-only imports at runtime, so no actual module cycle exists.
+import type { FrameworkArchetype } from "./framework";
+
 // ----------------------------------------------------------------------------
 // 1. CORE TYPES — what the engine consumes and produces
 // ----------------------------------------------------------------------------
@@ -213,6 +220,12 @@ export interface EngineRun {
   project_input: ProjectInput;
   framework_results: FrameworkResult[];
   gap_list: GapItem[]; // synthesised across frameworks, ordered by severity
+  // Non-fatal diagnostic warnings from the run. Populated when frameworks
+  // are skipped — currently when a product_label or issuance_framework is
+  // passed but its scoring isn't yet implemented (Phase 1 / Phase 3 work).
+  // The free-tier SnapshotRenderer MUST NOT propagate this field; it is a
+  // diagnostic surface for paid-tier debug pages and engine consumers.
+  warnings?: string[];
 }
 
 export interface GapItem {
@@ -291,6 +304,12 @@ export interface HeatmapCell {
   verdict: "pass" | "partial" | "fail" | "data_missing";
   authority_level?: 1 | 2 | 3;
   pillar_verdicts?: PillarVerdict[];
+  // Discriminator naming the archetype this cell represents. Populated for
+  // framework cells (activity_aligned today; product_label / issuance_framework
+  // in Phase 1 / Phase 3). Omitted on the minimum_safeguards cell because
+  // safeguards is a cross-cutting pillar summary that does not belong to any
+  // archetype. Allowlisted in src/renderers/__tests__/snapshot.gate.test.ts.
+  archetype?: FrameworkArchetype;
 }
 
 export interface PillarVerdict {

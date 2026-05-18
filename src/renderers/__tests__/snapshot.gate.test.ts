@@ -55,6 +55,11 @@ const ALLOWED_HEATMAP_CELL_KEYS = [
   "verdict",
   "authority_level",
   "pillar_verdicts",
+  // Added in phase 0/0.3. Discriminates the archetype a cell represents
+  // (activity_aligned today; product_label / issuance_framework once SFDR
+  // and ICMA scoring lands). Not investor-grade content — purely a row
+  // label — so its addition does not relax the gate.
+  "archetype",
 ];
 const ALLOWED_PILLAR_VERDICT_KEYS = ["pillar_id", "verdict"];
 const EXPECTED_SNAPSHOT_GAP_KEYS = ["gap_id", "one_sentence_description"];
