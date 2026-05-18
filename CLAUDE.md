@@ -103,6 +103,23 @@ Never skip this test. Never relax it without updating both the type (`SnapshotOu
 
 As of v0.3.0 the per-cell shape check is "required-subset + allowed-subset" (not exact-match), because cells now have variable optional fields (`pillar_verdicts`, `authority_level`). Leak protections (magic markers + DISALLOWED_KEYS walk) are unchanged. v0.4.0 added `archetype` to the per-cell allowlist (atomically with the type change); the DISALLOWED_KEYS walk and magic-marker tests were not touched.
 
+## KB access patterns: `activities[]` vs `frameworks[]`
+
+As of v0.5.0-alpha.1, the `KnowledgeBase` returned by `loadKnowledgeBase()` exposes two access paths with deliberately different semantics. New code MUST pick the right one — confusing them leads to either incorrect scoping or a broken hash invariant.
+
+- **`activities[]`** — legacy view, partitioned to activity-aligned frameworks only (currently: EU Taxonomy Activity 8.1). Preserves the EU 8.1 KB hash invariant (`sha256:b3daee…d43`) because `computeKnowledgeBaseHash` continues to hash only this partition. Consumed by EU Taxonomy scoring logic (`src/logic/sc_8_1_*`, `dnsh_8_1_*`, `safeguards_*`), the legacy `Engine.run((ProjectInput, Activity[]))` overload, and the audit replay machinery. Do not add non-activity-aligned frameworks to this view, and do not change what the hash is computed over.
+
+- **`frameworks[]`** — canonical cross-archetype view (paired with `frameworksById: Map<string, AnyFramework>`). Contains every framework regardless of archetype (`activity_aligned`, `product_label`, `issuance_framework`). This is the access path for all post-Phase-0 scoring logic, validator work, ref resolution, and renderer cell production.
+
+**Rule of thumb for new code:**
+
+- Touching EU Taxonomy scoring or audit replay → `activities[]`
+- Adding scoring for any new framework (SFDR, UK SDR, ICMA GBP) → `frameworks[]`
+- Walking the full KB for any purpose → `frameworks[]`
+- Computing hash invariants → must continue to compute over the activity-aligned partition only (i.e. `activities[]`)
+
+If you find yourself reaching for `activities[]` while implementing scoring or rendering for a non-EU-Taxonomy framework, stop — that's a bug waiting to happen. The SFDR criteria in Phase 1 commits 1.2 and 1.3 access frameworks via `frameworks[]`; Phase 2 UK SDR and Phase 3 ICMA GBP work follows the same rule.
+
 ## v0.4.0 output contracts
 
 `HeatmapCell`:
@@ -185,7 +202,7 @@ Pre-release tag. The full `v0.5.0` lands at the end of Phase 1 (commit 1.4) once
 
 **Loader changes** (`src/knowledge/load.ts`, `src/knowledge/criterion-library.ts`):
 - `KnowledgeBase` gains `frameworks: AnyFramework[]` and `frameworksById: Map<string, AnyFramework>` — the full collection across archetypes.
-- `KnowledgeBase.activities[]` is now partitioned to activity-aligned frameworks only. This is the load-bearing change that **preserves the EU 8.1 KB hash invariant** (`sha256:b3daee…d43`) even though SFDR JSONs are now part of the KB — `computeKnowledgeBaseHash` continues to hash only activity-aligned bytes.
+- `KnowledgeBase.activities[]` is now partitioned to activity-aligned frameworks only. This is the load-bearing change that **preserves the EU 8.1 KB hash invariant** (`sha256:b3daee…d43`) even though SFDR JSONs are now part of the KB — `computeKnowledgeBaseHash` continues to hash only activity-aligned bytes. (See "KB access patterns" above for the durable architectural rule.)
 - New `loadCriterionLibrary(opts?)` walks `regulatory-knowledge/criteria/**/*.json`, validates each file against `criterion.schema.json`, returns `{ byId: Map<criterion_id, SharedCriterion>, sourceFiles }`. Throws `CriterionLibraryValidationError` on schema failure or `criterion_id`/`regime` mismatch.
 - New `resolveCriterionRefs(refs, library, framework)` resolves each `{ ref, weight }` against the criterion library and runs three checks: existence (criterion present in library); `applies_to` membership (referenced criterion's `applies_to` array includes the framework's id); `regime` match (criterion's `regime` equals framework's `regime`). Returns both resolved entries and structured errors.
 
