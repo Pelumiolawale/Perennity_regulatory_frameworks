@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.2 (Phase 0 complete + Phase 1 commits 1.0, 1.0.1, 1.1, and 1.2 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 declared, and SFDR Article 8 fully scored with deterministic five-band verdicts). SFDR Article 9 criteria 8-11 ship next in commit 1.3; ICMA GBP in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.4 (Phase 0 complete + Phase 1 commits 1.0 → 1.3 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.4 with deterministic five-band verdicts). ICMA GBP lands in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -308,6 +308,53 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR phrase table** for snapshot — `SNAPSHOT_PHRASES` has no SFDR entries yet; the renderer's gap_list path skips SFDR verdicts in 1.2. Phrase table additions ship in commit 1.4.
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
+
+## v0.5.0-alpha.4 — SFDR Article 9 scoring + methodology v3.4 + criterion 11 fold (Phase 1, commit 1.3)
+
+Pre-release continues. Full `v0.5.0` ships in commit 1.4 with PDF renderer and snapshot phrase table for SFDR. This commit converts SFDR Article 9 from declared-only (commit 1.1) to fully scored under a substantially re-architected framing — methodology v3.4 (not a patch on v3.3).
+
+**Methodology v3.4 — three locked framing statements** (in `src/lib/methodologyVersion.ts` file-doc):
+
+1. **Art 9 reframe (load-bearing):** PB certifies Art 9 SI-eligibility at the project (asset) level. The project is the asset; the developer entity is the investee; FMP-level disclosure obligations remain with the FMP. PB's certification answers: *is this project a credible SI-qualifying asset that an FMP could place in their Art 9 fund?*
+2. **90% as positioning principle:** PB only certifies projects as Art 9 SI-eligible where ≥90% of FMP investment in the project could defensibly be attributed to the SI proportion of their fund. This is a positioning principle informing calibration of c8/c9 — **NOT a per-criterion arithmetic threshold.** This supersedes the v3.3 quantitative SI floor at criterion-level. Verified by grep: no 0.9 / 90 numeric threshold exists in `src/sfdr/` for any Art 9 criterion.
+3. **Site boundary:** Default project scope is asset-level (one data centre or one multi-building site under common ownership). Any single building's DNSH or SI-objective failure drags the site-level verdict down. Portfolio-level certification requires explicit engagement scope.
+
+**Criterion count:** 10 total (was 11 in commit 1.1). The reframe is structural:
+- **Removed:** `sfdr_v1_reference_benchmark_alignment` (criterion 11) — folded into criterion 8 condition 4 sub-case (b).
+- **Renamed/replaced:** v3.3's `sustainable_investment_objective` / `sustainable_investment_floor` / `pai_integration_evidence` declaration files → v3.4's `si_objective_qualification` / `si_eligibility_evidence_pack` / `project_pai_data_provision`. The criterion_ids are version-stamped (`sfdr_v1_*`) and reflect the v3.4 methodology, not the v3.3 placeholder names.
+- **Unchanged:** 7 Art 8 criteria (1–7).
+
+**Per-criterion scoring (Article 9):**
+
+- `art9_c8_si_objective_qualification` (axes: project) — Load-bearing. Named + mappable objective + dominance test (IM/board paper + economics + marketing leads with SI) + ≥3 quantified indicators from Art 2(17) examples or L2 RTS Annex I PAIs + enhanced evidence for carbon-reduction (sub-case a) and benchmark-engagement (sub-case b). Sub-case (b) defaults to `not_applicable` with rationale when engagement scope does not anticipate Art 9(1) benchmarked fund placement.
+- `art9_c9_si_eligibility_evidence_pack` (axes: project + entity, cascades) — Five-component evidence pack. **Cascade rules are load-bearing:** any of `c8 not_aligned`, `c4 not_aligned`, `c2 not_aligned` forces `c9 not_aligned` (Art 2(17)'s independent DNSH and good-governance gates). Cascade implementation: sequential reads + early-return inside the scoring function with rationale text citing all triggers (multi-cascade tested explicitly).
+- `art9_c10_project_pai_data_provision` (axes: project + entity, verification gate reads c3) — Data-provision test, NOT policy. Per-PAI value + methodology + verification metadata. **Verification gate:** if c3 is `aligned`, no extra verification; if c3 `partially_aligned` or weaker, ≥9 of 11 PAIs must be third-party-verified (else caps at `partially_aligned`). Reads c3 read-only — NO cascade. Numeric output: PAI coverage count out of 11, populated even for `not_aligned` bands. PAI 7 (biodiversity) gate: hard fail when project is within 2km of a Key Biodiversity Area and PAI 7 data is absent.
+
+**Input shape extensions (additive on Phase 0 contracts):**
+
+- `ProjectSFDRInputs.art9?: ProjectArt9Inputs` with three nested optional fields:
+  - `si_objective?: Art9SIObjectiveInputs` — `{ objective, dominance, quantified_indicators[], sub_case_a, sub_case_b }`
+  - `evidence_pack?: Art9EvidencePackInputs` — `{ contribution/dnsh/governance attestation kinds, pai_data_file_ref, recency }`
+  - `pai_data?: Art9PAIDataInputs` — `{ per_pai: Record<paiNumber, ProjectPAIDatum>, machine_readable_form, data_recency_months, within_2km_of_kba }`
+- All nested fields optional. Absence resolves to `insufficient_evidence` at each criterion. `EntityInput` is NOT extended in 1.3 — Art 9 c8/c9/c10 read primarily project-level evidence; entity-side data reaches c9 and c10 via their cascade/read of c2 and c3 results.
+
+**Engine integration:**
+
+- The runtime's product_label scoring path invokes the SFDR orchestrator (unchanged from 1.2). The orchestrator's topological sort handles the new dependency edges via the `depends_on` fields on the new criterion JSONs (c9 declares depends_on c8, c4, c2, c10; c10 declares depends_on c3).
+- Art 9 frameworks no longer emit any "not implemented" warning — all 10 criteria are now scored. The defensive warning path in `scoreProductLabel` remains for any future framework adding criteria without registered scoring functions.
+- Cross-framework dependency unchanged: criterion 6 still reads EU Tax 8.1 via `framework_results`.
+
+**Aggregate Art 9 verdict still deferred.** Weights stay `null`; `framework.overall_verdict` is `not_applicable` (calibration_pending). Calibration commit ships post-Phase-1.
+
+**Methodology doc-comment line count:** 376 lines (combined v3.2 + v3.3 + v3.4). Past the 250-line stop-and-surface threshold flagged in the spec — but S2 explicitly parked extraction-to-`methodology.md` to commit 1.4, so kept inline for 1.3. The 1.4 extraction decision is now load-bearing for readability.
+
+**Test coverage:**
+
+- 21 new tests across criteria 8/9/10 (target was 12–15; exceeded because cascade architecture and verification-gate logic each warranted multiple band-condition coverage points).
+- Per-criterion bands: c8 aligned-with-sub-case-(a) / partial-on-dominance / partial-on-sub-case-(a) / no-objective / not-mappable / insufficient / sub-case-(b)-N/A / sub-case-(b)-fail; c9 aligned / 3 single-cascade tests / multi-cascade / management-only attestation; c10 aligned-with-strong-c3 / verification-gate-engages / verification-gate-clears / not-aligned-<8 / KBA-hard-fail / insufficient.
+- End-to-end via `Engine.run` with Art 9 framework loaded from the KB.
+- All 186 baseline tests still pass — **total 207/207**.
+- Structural gate test green. EU 8.1 KB hash invariant (`sha256:b3daee…d43`) green.
 
 ## v0.5.0-alpha.3 — EU non-cooperative jurisdictions list refresh (Phase 1, commit 1.2.1)
 

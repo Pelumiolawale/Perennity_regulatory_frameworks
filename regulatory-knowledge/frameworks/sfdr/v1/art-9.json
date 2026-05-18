@@ -8,7 +8,7 @@
   "framework": "SFDR",
   "framework_version": "Regulation_2019_2088_consolidated_2024",
   "framework_source_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  "methodology_version": "v3.3",
+  "methodology_version": "v3.4",
   "methodology_vintage": "May 2026",
   "effective_date": "2026-05-18",
   "regulatory_anchors": [
@@ -33,10 +33,9 @@
     { "ref": "sfdr_v1_pre_contractual_disclosure", "weight": null },
     { "ref": "sfdr_v1_taxonomy_alignment_disclosure", "weight": null },
     { "ref": "sfdr_v1_periodic_reporting_commitment", "weight": null },
-    { "ref": "sfdr_v1_sustainable_investment_objective", "weight": null },
-    { "ref": "sfdr_v1_sustainable_investment_floor", "weight": null },
-    { "ref": "sfdr_v1_pai_integration_evidence", "weight": null },
-    { "ref": "sfdr_v1_reference_benchmark_alignment", "weight": null }
+    { "ref": "sfdr_v1_si_objective_qualification", "weight": null },
+    { "ref": "sfdr_v1_si_eligibility_evidence_pack", "weight": null },
+    { "ref": "sfdr_v1_project_pai_data_provision", "weight": null }
   ],
   "verdict_thresholds": {
     "aligned": null,

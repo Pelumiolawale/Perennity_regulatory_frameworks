@@ -122,27 +122,33 @@ describe("Engine.run with SFDR Art 8 framework (v0.5.0-alpha.2 — Art 8 now sco
   });
 });
 
-describe("Engine.run with SFDR Art 9 framework (still not_implemented in 1.2)", () => {
-  test("produces 11 cells — 7 scored shared + 4 still not_implemented; warning naming the framework", async () => {
+describe("Engine.run with SFDR Art 9 framework (v0.5.0-alpha.4 — fully scored under v3.4)", () => {
+  test("produces 10 scored cells; no not_implemented warning; v3.4 reframe in effect", async () => {
     const { art9 } = await loadSfdrFrameworks();
     const engine = makeEngine();
     const run = await engine.run({ project: MINIMAL_PROJECT }, [art9]);
 
     assert.equal(run.framework_results.length, 1);
     const fr = run.framework_results[0];
-    assert.equal(fr.sc_results.length, 11);
+    // v3.4: 7 Art 8 shared + 3 Art 9 = 10. Criterion 11 folded into c8
+    // sub-case (b); 90% SI floor moved to methodology preamble.
+    assert.equal(fr.sc_results.length, 10);
 
-    // Mix: 7 shared-with-Art-8 criteria now scored; 4 Art-9-only criteria
-    // still not_implemented (Phase 1 commit 1.3 implements them).
+    // All 10 criteria are scored — no not_implemented in 1.3 onward.
     const pending = fr.sc_results.filter((r) => r.scoring_status === "not_implemented");
-    const scored = fr.sc_results.filter((r) => r.scoring_status !== "not_implemented");
-    assert.equal(pending.length, 4, "Art-9-only criteria should still be not_implemented");
-    assert.equal(scored.length, 7, "shared criteria should be scored under 1.2");
+    assert.equal(pending.length, 0, "all 10 SFDR criteria should be scored under v3.4");
 
-    assert.ok(run.warnings && run.warnings.length > 0);
-    const art9Warning = run.warnings.find((w) => w.includes("sfdr_v1_article_9"));
-    assert.ok(art9Warning, "expected a warning naming the Art 9 framework");
-    assert.match(art9Warning!, /commit 1\.3/);
+    // No Art-9-not-implemented warning expected.
+    if (run.warnings) {
+      const art9Warning = run.warnings.find(
+        (w) => w.includes("sfdr_v1_article_9") && w.toLowerCase().includes("not yet implemented"),
+      );
+      assert.equal(
+        art9Warning,
+        undefined,
+        "no Art 9 not-implemented warning expected under v3.4",
+      );
+    }
 
     const renderer = new SnapshotRenderer({
       disclaimer: "Article 26 disclaimer text.",
@@ -150,15 +156,16 @@ describe("Engine.run with SFDR Art 9 framework (still not_implemented in 1.2)", 
     });
     const snapshot = await renderer.render(run);
     const sfdrCells = snapshot.heatmap.filter((c) => c.framework === "SFDR");
-    assert.equal(sfdrCells.length, 11);
+    assert.equal(sfdrCells.length, 10);
 
-    // The 90% floor criterion must surface as a distinct cell with its id,
-    // and remain not_implemented at commit 1.2.
-    const floor = sfdrCells.find(
-      (c) => c.criterion_id === "sfdr_v1_sustainable_investment_floor",
+    // The new c8 (si_objective_qualification) must surface as a distinct
+    // cell with a band verdict (not scoring_status).
+    const c8 = sfdrCells.find(
+      (c) => c.criterion_id === "sfdr_v1_si_objective_qualification",
     );
-    assert.ok(floor, "sustainable_investment_floor cell must surface in Art 9 snapshot");
-    assert.equal(floor.scoring_status, "not_implemented");
+    assert.ok(c8, "si_objective_qualification cell must surface in Art 9 snapshot");
+    assert.equal(c8.scoring_status, undefined);
+    assert.ok(c8.rationale_text);
   });
 });
 

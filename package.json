@@ -1,6 +1,6 @@
 {
   "name": "@perennity/engine",
-  "version": "0.5.0-alpha.3",
+  "version": "0.5.0-alpha.4",
   "description": "Perennity Bridge deterministic scoring engine — Activity 8.1",
   "private": true,
   "main": "./dist/index.js",

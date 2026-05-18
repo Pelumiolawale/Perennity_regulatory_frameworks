@@ -1,0 +1,32 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_si_objective_qualification",
+  "name": "Sustainable investment objective qualification (project-level)",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 9(1) / 9(2) / 9(3) (financial products pursuing a sustainable investment objective)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 2(17) (definition of 'sustainable investment')",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 10(1)(a) (website disclosure of sustainable investment objective)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["sfdr_v1_article_9"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.4",
+  "summary": "Load-bearing Art 9 test. Tests whether the project's SI objective is named, mappable to a recognised environmental or social taxonomy, evidenced as the primary commercial rationale (dominance test), and supported by ≥3 quantified contribution indicators. Sub-case (a) applies enhanced evidence when the objective is GHG/carbon-reduction (Art 9(3)). Sub-case (b) applies additional benchmark compatibility evidence when the engagement scope anticipates Art 9(1) benchmarked fund placement; defaults to not_applicable when no such scope is declared. The 90% positioning principle (v3.4 methodology preamble) expresses itself here as the calibration of the 'dominant purpose' threshold for the aligned band.",
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), the Article 9 'sustainable investment objective' concept is expected to be re-cast within the new category regime. PB Art 9 verdicts issued under methodology v3.4 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}

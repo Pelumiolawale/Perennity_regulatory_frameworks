@@ -1,0 +1,32 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_si_eligibility_evidence_pack",
+  "name": "SI-eligibility evidence pack (FMP-liftable)",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 2(17) (DNSH + good-governance constituents of the sustainable investment definition)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "Commission Delegated Regulation (EU) 2022/1288",
+      "celex": "02022R1288-20230220",
+      "article": "Annex II / Annex III / Annex IV / Annex V (pre-contractual and periodic disclosure templates referenced by the FMP)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02022R1288-20230220"
+    }
+  ],
+  "axes": ["project", "entity"],
+  "applies_to": ["sfdr_v1_article_9"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.4",
+  "summary": "Evidence-pack quality test: five required components packaged for FMP lift — (1) contribution attestation (criterion 8 result, auditor-reviewed), (2) DNSH attestation (criterion 4 result), (3) good-governance attestation (criterion 2 result), (4) machine-readable PAI data file (criterion 10 result), (5) documentation completeness (recency, version-control). Cascade rules are load-bearing: criterion 8 not_aligned, criterion 4 not_aligned, or criterion 2 not_aligned each force criterion 9 not_aligned (Art 2(17)'s explicit DNSH and good-governance gates).",
+  "depends_on": [
+    "sfdr_v1_si_objective_qualification",
+    "sfdr_v1_dnsh_assessment",
+    "sfdr_v1_good_governance_attestation",
+    "sfdr_v1_project_pai_data_provision"
+  ],
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), the SI definition and its DNSH / good-governance constituents are expected to be retained as core gates for the highest-tier category. PB Art 9 verdicts issued under methodology v3.4 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}

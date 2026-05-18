@@ -153,13 +153,15 @@ export class DeterministicEngine implements Engine {
       entity: entityInput,
       framework_results: fwResultsById,
     });
-    // Warn if any criterion is still not_implemented (Art 9 criteria
-    // 8-11 today). Art 8 frameworks no longer emit this warning since
-    // commit 1.2 ships full scoring for them.
+    // Warn if any criterion is still not_implemented. As of v0.5.0-alpha.4
+    // (commit 1.3 / methodology v3.4) all 10 SFDR criteria — Art 8 (1–7)
+    // and Art 9 (8–10) — are scored, so this should never fire for SFDR
+    // frameworks. The check remains as a defensive guard for any future
+    // criterion added to a framework JSON without a registered scoring fn.
     const stillPending = sc_results.filter((r) => r.scoring_status === "not_implemented");
     if (stillPending.length > 0) {
       warnings.push(
-        `Framework "${framework.id}" has ${stillPending.length} criterion(criteria) without scoring logic yet (${stillPending.map((r) => r.criterion_id).join(", ")}). These cells will render as "Pending implementation". Article 9 scoring lands in commit 1.3.`,
+        `Framework "${framework.id}" has ${stillPending.length} criterion(criteria) without registered scoring logic (${stillPending.map((r) => r.criterion_id).join(", ")}). These cells will render as "Pending implementation".`,
       );
     }
     return {
