@@ -21,7 +21,7 @@ const PILLAR_IDS = [
 //
 // The engine resolves `depends_on` first and passes the pillar results in via
 // `previous_results` on the LogicInput.
-export const minimum_safeguards_rollup: LogicFn = ({ criterion, previous_results }) => {
+export const minimum_safeguards_rollup: LogicFn<["project"]> = ({ criterion, previous_results }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,

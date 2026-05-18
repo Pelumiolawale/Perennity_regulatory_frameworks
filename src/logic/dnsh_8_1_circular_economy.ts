@@ -13,7 +13,7 @@ const REQUIRED_ITEMS = [
 // EU Taxonomy 8.1 DNSH (4): Transition to a circular economy.
 // Documentary checks against Directives 2009/125/EC (ecodesign),
 // 2011/65/EU (RoHS), 2012/19/EU (WEEE Annex VII), plus a waste management plan.
-export const dnsh_8_1_circular_economy: LogicFn = ({ criterion, data_points }) => {
+export const dnsh_8_1_circular_economy: LogicFn<["project"]> = ({ criterion, data_points }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,

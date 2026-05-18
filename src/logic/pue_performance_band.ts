@@ -33,7 +33,7 @@ const WARM_BANDS: readonly Band[] = [
 // Perennity Bridge methodology criterion (authority_level 2). Banded score —
 // does NOT contribute to EU Taxonomy alignment routing. Renders only on the
 // paid report alongside the regulatory sc_8_1_2 measurement-compliance block.
-export const pue_performance_band: LogicFn = ({ criterion, data_points }) => {
+export const pue_performance_band: LogicFn<["project"]> = ({ criterion, data_points }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,

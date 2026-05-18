@@ -9,7 +9,7 @@ const AUDIT_DOC_TYPES = ["audit_report", "independent_audit"] as const;
 // compliance, with independent third-party verification within the criterion's
 // verification_frequency_years window. The audit document is discovered by
 // document_type, not by a brittle document_id-equals-input-string match.
-export const sc_8_1_1: LogicFn = ({ criterion, data_points, evidence_documents, project }) => {
+export const sc_8_1_1: LogicFn<["project"]> =({ criterion, data_points, evidence_documents, project }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,

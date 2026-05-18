@@ -14,7 +14,7 @@ import { safeguards_taxation } from "./safeguards_taxation";
 import { safeguards_fair_competition } from "./safeguards_fair_competition";
 import { minimum_safeguards_rollup } from "./minimum_safeguards_rollup";
 
-const registry: ReadonlyMap<string, LogicFn> = new Map<string, LogicFn>([
+const registry: ReadonlyMap<string, LogicFn<["project"]>> = new Map<string, LogicFn<["project"]>>([
   ["logic.sc_8_1_1.v2", sc_8_1_1],
   // logic.sc_8_1_2.v1 retained for backward-compat with any v3.1-stamped
   // assessment still in IndexedDB. v3.2 KB references
@@ -34,7 +34,7 @@ const registry: ReadonlyMap<string, LogicFn> = new Map<string, LogicFn>([
   ["logic.minimum_safeguards_rollup.v1", minimum_safeguards_rollup],
 ]);
 
-export function getLogic(ref: string): LogicFn | undefined {
+export function getLogic(ref: string): LogicFn<["project"]> | undefined {
   return registry.get(ref);
 }
 

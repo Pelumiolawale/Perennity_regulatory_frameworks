@@ -65,8 +65,9 @@ export type {
 } from "./knowledge";
 
 // --- Framework archetype types (phase 0, commit 0.1) ------------------------
-// Three-archetype discriminated union over Activity. The runtime continues to
-// consume Activity[] in v0.3.0; broadening lands in commit 0.2. See
+// Three-archetype discriminated union over Activity. The runtime broadened
+// to consume AnyFramework[] in commit 0.2; the legacy (Activity[]) call
+// shape is still accepted via overload on DeterministicEngine.run. See
 // src/framework.ts for the type definitions and src/prototype/ on branch
 // spike/archetype-prototype for the validating spike that informed the design.
 export type {
@@ -85,6 +86,14 @@ export type {
   IssuanceInputAxis,
   AnyFramework,
 } from "./framework";
+
+// --- Runtime input axes (phase 0, commit 0.2) -------------------------------
+// EntityInput and IssuanceInput are the two NEW input axes alongside the
+// existing ProjectInput. RunInput is the wrapper Engine.run accepts under
+// the broadened overload. LogicInput / LogicFn (in ./logic) carry an axes
+// type parameter that gates which axes a criterion is allowed to read.
+export type { EntityInput, IssuanceInput, RunInput } from "./inputs";
+export type { InputAxis, LogicInput, LogicFn } from "./logic/types";
 
 // --- Contract & domain types ------------------------------------------------
 // `Engine` is the interface contract. `DeterministicEngine` (above) is the

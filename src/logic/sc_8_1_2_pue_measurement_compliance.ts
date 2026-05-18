@@ -14,7 +14,7 @@ const PUE_CATEGORIES = ["category_1", "category_2", "category_3"];
 // criterion is a compliance attestation across five named items — not a
 // numeric threshold (the 1.5 ratio cited in v3.1 was unsourced and has been
 // removed; see commit message for v0.2.0).
-export const sc_8_1_2_pue_measurement_compliance: LogicFn = ({
+export const sc_8_1_2_pue_measurement_compliance: LogicFn<["project"]> = ({
   criterion,
   data_points,
   evidence_documents,

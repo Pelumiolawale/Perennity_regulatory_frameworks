@@ -5,7 +5,7 @@ const VERSION = "v1";
 
 // EU Taxonomy 8.1 DNSH (Appendix A): climate change adaptation —
 // physical climate risk vulnerability assessment.
-export const dnsh_adaptation: LogicFn = ({ criterion, data_points }) => {
+export const dnsh_adaptation: LogicFn<["project"]> =({ criterion, data_points }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,

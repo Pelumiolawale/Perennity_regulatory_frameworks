@@ -21,7 +21,7 @@ export interface SafeguardsPillarSpec {
   citation: string;
 }
 
-export function makePillarLogic(spec: SafeguardsPillarSpec): LogicFn {
+export function makePillarLogic(spec: SafeguardsPillarSpec): LogicFn<["project"]> {
   return ({ criterion, data_points }) => {
     const base = {
       criterion_id: criterion.id,

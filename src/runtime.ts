@@ -15,6 +15,11 @@ import type {
   ReplayManifest,
   Verdict,
 } from "./engine";
+import type {
+  ActivityAlignedFramework,
+  AnyFramework,
+} from "./framework";
+import type { RunInput } from "./inputs";
 import { getLogic } from "./logic/registry";
 import type { LogicInput } from "./logic/types";
 
@@ -42,15 +47,42 @@ export class DeterministicEngine implements Engine {
     this.generateId = deps.generateId ?? (() => randomUUID());
   }
 
-  async run(input: ProjectInput, activities: Activity[]): Promise<EngineRun> {
-    const framework_results = activities.map((a) => this.scoreActivity(a, input));
+  // Overload 1 — legacy v0.3.0 shape: bare ProjectInput + Activity[]. Preserved
+  // verbatim so existing callers (notably perennity-capital-readiness-platform)
+  // keep type-checking after a pin bump.
+  async run(input: ProjectInput, activities: Activity[]): Promise<EngineRun>;
+  // Overload 2 — broadened shape: wrapped RunInput + AnyFramework[]. Use this
+  // when the framework set includes non-activity_aligned archetypes
+  // (product_label, issuance_framework) or when the run needs to carry
+  // entity / issuance axes alongside project. The runtime only scores
+  // activity_aligned today — product_label and issuance_framework entries
+  // pass through unscored until their scoring lands in Phase 1 / Phase 3.
+  async run(input: RunInput, frameworks: AnyFramework[]): Promise<EngineRun>;
+  async run(
+    input: ProjectInput | RunInput,
+    frameworks: AnyFramework[],
+  ): Promise<EngineRun> {
+    // Discriminate by structural shape. RunInput has a `project` field
+    // (the wrapper). ProjectInput has `project_id` at the top level and no
+    // `project` field. The `!("project_id" in input)` guard avoids a
+    // pathological ProjectInput that happens to be inside a wrapper.
+    const projectInput: ProjectInput =
+      "project" in input && !("project_id" in input) ? input.project : (input as ProjectInput);
+    // Filter to activity_aligned. Other archetypes are skipped silently for
+    // now — Phase 1 (SFDR) and Phase 3 (ICMA) commits add archetype-specific
+    // scoring paths and at that point this filter will become a dispatch.
+    const activities: Activity[] = frameworks.filter(
+      (f): f is ActivityAlignedFramework =>
+        f.archetype === undefined || f.archetype === "activity_aligned",
+    );
+    const framework_results = activities.map((a) => this.scoreActivity(a, projectInput));
     return {
       run_id: this.generateId(),
       run_timestamp: this.now(),
       methodology_version: this.methodology_version,
       engine_commit_sha: this.engine_commit_sha,
       knowledge_base_hash: this.knowledge_base_hash,
-      project_input: input,
+      project_input: projectInput,
       framework_results,
       gap_list: synthesizeGaps(framework_results),
     };

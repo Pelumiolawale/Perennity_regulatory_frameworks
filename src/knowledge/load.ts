@@ -71,23 +71,27 @@ export async function compileValidator(schemaPath: string): Promise<CompiledVali
   return { validate, schemaSource };
 }
 
-// Backward-compat wrapper. Narrows the validated data to Activity for callers
-// that only handle the activity_aligned archetype. The loader (loadKnowledgeBase)
-// uses this today because the on-disk KB contains only activity_aligned
-// frameworks (EU Taxonomy 8.1). Use validateFramework for archetype-dispatched
-// downstream code in future commits.
+/**
+ * @deprecated Since phase-0/0.2. Use `validateFramework` for general
+ * framework validation — it returns the broader `AnyFramework` union and
+ * lets callers dispatch on `archetype`. `validateActivity` narrows
+ * incorrectly for non-activity_aligned data: it returns
+ * `{ activity: Activity }` even when the validated input is
+ * product_label or issuance_framework shaped, which is a type-level
+ * lie. Kept exported for backward compat with pre-0.4.0 consumers; will
+ * be removed in v1.0. Internally now delegates to `validateFramework`
+ * and casts the framework back to `Activity` for the legacy return
+ * shape.
+ */
 export function validateActivity(
   validate: ValidateFunction<AnyFramework>,
   data: unknown,
 ):
   | { valid: true; activity: Activity }
   | { valid: false; errors: ErrorObject[] } {
-  if (validate(data)) {
-    // The compiled validator accepts any archetype. Callers of this wrapper
-    // are responsible for ensuring the input is activity_aligned-shaped.
-    return { valid: true, activity: data as Activity };
-  }
-  return { valid: false, errors: validate.errors ?? [] };
+  const result = validateFramework(validate, data);
+  if (!result.valid) return result;
+  return { valid: true, activity: result.framework as Activity };
 }
 
 // New in commit phase-0/0.1. Returns the broader AnyFramework union; use

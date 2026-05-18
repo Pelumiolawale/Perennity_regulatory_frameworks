@@ -7,7 +7,7 @@ const PARTIAL_MARGIN = 0.1;
 
 // EU Taxonomy 8.1 DNSH (Appendix B): water-use effectiveness ≤ 0.4 l/kWh,
 // conditional on the site being in a water-stressed region (WRI Aqueduct 4.0).
-export const dnsh_water: LogicFn = ({ criterion, data_points }) => {
+export const dnsh_water: LogicFn<["project"]> = ({ criterion, data_points }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,

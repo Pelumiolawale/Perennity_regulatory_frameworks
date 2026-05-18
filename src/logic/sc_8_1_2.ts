@@ -8,7 +8,7 @@ const PUE_THRESHOLD = 1.5;
 const PARTIAL_MARGIN = 0.1;
 
 // EU Taxonomy 8.1 §2: PUE ≤ 1.5 for existing data centres (built before 2025).
-export const sc_8_1_2: LogicFn = ({ criterion, data_points, project }) => {
+export const sc_8_1_2: LogicFn<["project"]> = ({ criterion, data_points, project }) => {
   const base = {
     criterion_id: criterion.id,
     scoring_logic_ref: REF,
