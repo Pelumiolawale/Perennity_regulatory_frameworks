@@ -54,6 +54,37 @@ export type {
 export { filterCellsForSnapshot } from "./renderers/filterCells";
 export type { SupportedLabel, FilterCellsResult } from "./renderers/filterCells";
 
+// --- Label namespace bridge (v0.5.0-alpha.1, phase 1, commit 1.1) -----------
+// Maps KB-internal `label_id` to public-facing `SupportedLabel`. The two
+// namespaces are deliberately separate (hash stability vs. forward compat);
+// see src/labels.ts for the full rationale.
+export {
+  labelIdToSupportedLabel,
+  labelIdToSupportedLabelWithWarning,
+} from "./labels";
+export type { LabelMappingResult } from "./labels";
+
+// --- Shared criterion library (v0.5.0-alpha.1, phase 1, commit 1.1) ---------
+// Standalone criterion files + ref resolution. See
+// regulatory-knowledge/criteria/criterion.schema.json for the schema and
+// src/knowledge/criterion-library.ts for the loader + resolver.
+export {
+  loadCriterionLibrary,
+  resolveCriterionRefs,
+  CriterionLibraryValidationError,
+} from "./knowledge/criterion-library";
+export type {
+  SharedCriterion,
+  CriterionRef,
+  CriterionLibrary,
+  CriterionRefResolution,
+  RefResolutionError,
+  ResolveRefsResult,
+  CriterionAxis,
+  CriterionScoringStatus,
+  RegulatoryAnchor,
+} from "./knowledge/criterion-library";
+
 // --- Knowledge-base loader --------------------------------------------------
 export {
   loadKnowledgeBase,

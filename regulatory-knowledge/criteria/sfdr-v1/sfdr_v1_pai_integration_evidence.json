@@ -1,0 +1,26 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_pai_integration_evidence",
+  "name": "PAI integration evidence (Article 9 product level)",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 7 (product-level PAI disclosure); Article 9(2)(b) (PAI consideration as constituent of the sustainable investment definition)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "Commission Delegated Regulation (EU) 2022/1288",
+      "celex": "02022R1288-20230220",
+      "article": "Annex III (Article 9 pre-contractual template, PAI section)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02022R1288-20230220"
+    }
+  ],
+  "axes": ["project", "entity"],
+  "applies_to": ["sfdr_v1_article_9"],
+  "scoring_status": "not_implemented",
+  "methodology_version_introduced": "v3.3",
+  "summary": "Tests whether PAI consideration is operationalised at the product / project level: specific PAI indicators tracked, the threshold or trajectory used to discriminate inclusion, and the evidence that exclusion / engagement triggers actually fire when indicators breach. Goes beyond the entity-level Article 4 policy by requiring product-level integration evidence.",
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), PAI integration at the product level is expected to be retained as a core test for the highest-tier category. PB Art 9 verdicts issued under methodology v3.3 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}

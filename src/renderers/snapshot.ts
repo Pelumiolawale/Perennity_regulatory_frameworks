@@ -128,21 +128,42 @@ export class SnapshotRenderer implements Renderer<SnapshotOutput> {
   }
 
   private buildHeatmap(frs: FrameworkResult[]): HeatmapCell[] {
-    // Every FrameworkResult scored by the runtime today is activity_aligned
-    // — Engine.run filters non-activity frameworks out (Phase 0/0.3 warning
-    // path) and only activity-aligned scoring exists. When Phase 1 (SFDR)
-    // and Phase 3 (ICMA) scoring land, FrameworkResult will need to carry
-    // the archetype through from the source framework definition. Until
-    // then, hardcoding "activity_aligned" here is correct.
-    const frameworkCells: HeatmapCell[] = frs
-      .filter((fr) => fr.overall_verdict !== "not_applicable")
+    // Activity-aligned frameworks: one cell per FrameworkResult, aggregating
+    // verdict across the framework's SC + DNSH criteria. Existing EU 8.1
+    // behaviour — unchanged in shape.
+    const activityCells: HeatmapCell[] = frs
+      .filter(
+        (fr) =>
+          (fr.archetype === undefined || fr.archetype === "activity_aligned") &&
+          fr.overall_verdict !== "not_applicable",
+      )
       .map((fr) => ({
         framework: fr.framework,
         verdict: collapseVerdict(fr.overall_verdict),
-        archetype: "activity_aligned",
+        archetype: "activity_aligned" as const,
       }));
+
+    // v0.5.0-alpha.1 (Phase 1, commit 1.1): product_label frameworks emit one
+    // cell per declared criterion. Today every cell carries
+    // scoring_status="not_implemented" (SFDR scoring lands in 1.2 / 1.3); the
+    // criterion_id is the ref from the framework JSON.
+    const productLabelCells: HeatmapCell[] = frs
+      .filter((fr) => fr.archetype === "product_label")
+      .flatMap((fr) =>
+        fr.sc_results.map((r) => ({
+          framework: fr.framework,
+          verdict: collapseVerdict(r.verdict),
+          archetype: "product_label" as const,
+          criterion_id: r.criterion_id,
+          ...(r.scoring_status === "not_implemented"
+            ? { scoring_status: "not_implemented" as const }
+            : {}),
+        })),
+      );
+
     const safeguardsCell = buildSafeguardsCell(frs);
-    return safeguardsCell ? [...frameworkCells, safeguardsCell] : frameworkCells;
+    const out = [...activityCells, ...productLabelCells];
+    return safeguardsCell ? [...out, safeguardsCell] : out;
   }
 
   private buildGapList(gaps: GapItem[]): SnapshotGap[] {

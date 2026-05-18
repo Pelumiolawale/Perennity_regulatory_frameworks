@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.4.2 (Phase 0 complete + Phase 1 commits 1.0 and 1.0.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, the snapshot single-label filter, and SFDR label version-stamping for SFDR 2.0 forward compatibility). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in Phase 1, ICMA GBP in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.1 (Phase 0 complete + Phase 1 commits 1.0, 1.0.1, and 1.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, and SFDR Articles 8 + 9 declared via the shared criterion library). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in commits 1.2 (Art 8) and 1.3 (Art 9), ICMA GBP in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -166,6 +166,56 @@ Rationale: Commission proposal COM(2025) 841 would repeal Delegated Regulation 2
 Renaming either would either change a different concept's contract (label_id) or alter the EU 8.1 KB hash invariant (framework_applicability). Commit 1.1 introduces the first real SFDR framework JSON and is the right place to decide whether these adjacent concepts should align with `SupportedLabel`'s versioning convention.
 
 EU 8.1 knowledge_base_hash invariant (`sha256:b3daee…d43`) unchanged. `Engine.run`, `HeatmapCell`, and `SnapshotOutput` contracts unchanged. Defensible as a patch (vs. minor) because v0.4.1 was the introduction of `SupportedLabel` and no production consumer pins to it yet — the app stays on `#v0.4.0` until commit 1.5.
+
+## v0.5.0-alpha.1 — SFDR Articles 8 + 9 declared (Phase 1, commit 1.1)
+
+Pre-release tag. The full `v0.5.0` lands at the end of Phase 1 (commit 1.4) once SFDR scoring and the paid PDF renderer changes are in. This commit is intentionally **declarative only**: SFDR criteria ship with `scoring_status: "not_implemented"` and become real in commits 1.2 (Art 8) and 1.3 (Art 9).
+
+**Shared criterion library — new architecture.** Each criterion is a standalone JSON file under `regulatory-knowledge/criteria/<regime>/<criterion_id>.json`, validated by `regulatory-knowledge/criteria/criterion.schema.json`. Framework JSONs become lightweight ref-lists (`criteria: [{ ref, weight }]`). This pattern will be reused in Phase 2 (UK SDR) and Phase 3 (ICMA GBP); the v3.2 inline-criterion shape is retained for EU Taxonomy 8.1 and pre-existing test fixtures (the schema's product_label branch uses `anyOf` to accept either shape).
+
+**New files**:
+- `regulatory-knowledge/criteria/criterion.schema.json` — JSON Schema (Draft 2020-12) for shared criterion files. Required fields: `criterion_id`, `name`, `regime`, `regulatory_anchors`, `axes`, `applies_to`, `scoring_status`, `methodology_version_introduced`, `summary`. Optional: `successor_regime_note`. `criterion_id` is version-stamped (pattern `^[a-z]+_v\d+_[a-z][a-z0-9_]*$`); loader cross-checks that `criterion_id` starts with the `regime` slug.
+- `regulatory-knowledge/criteria/sfdr-v1/*.json` — 11 SFDR criterion files (7 shared between Art 8 and Art 9; 4 Art 9-only including the PB 90% sustainable-investment floor).
+- `regulatory-knowledge/frameworks/sfdr/v1/{art-8,art-9}.json` — two framework JSONs under the v3.3 ref-based shape. Both ship with `verdict_thresholds: { aligned: null, partially_aligned: null, not_aligned: 0 }` — calibration pending.
+
+**Schema additions** (`activity.schema.json`, additive only — EU 8.1 KB hash unchanged):
+- Top-level optional fields: `regime`, `label`, `regulatory_anchors`, `criteria` (ref array), `verdict_thresholds`.
+- `$defs`: `criterion_ref` (`{ ref, weight }`), `regulatory_anchor` (`{ regulation, celex, article, url? }`).
+- The product_label branch in `allOf` switched from `required: [label_id, label_family, eligibility_criteria]` to `anyOf` accepting either that legacy triple or the v3.3 triple `[framework_id, regime, criteria]`. The v3.2-shaped test fixtures in `phase_0_3_archetype.test.ts` / `load.test.ts` continue to validate.
+
+**Loader changes** (`src/knowledge/load.ts`, `src/knowledge/criterion-library.ts`):
+- `KnowledgeBase` gains `frameworks: AnyFramework[]` and `frameworksById: Map<string, AnyFramework>` — the full collection across archetypes.
+- `KnowledgeBase.activities[]` is now partitioned to activity-aligned frameworks only. This is the load-bearing change that **preserves the EU 8.1 KB hash invariant** (`sha256:b3daee…d43`) even though SFDR JSONs are now part of the KB — `computeKnowledgeBaseHash` continues to hash only activity-aligned bytes.
+- New `loadCriterionLibrary(opts?)` walks `regulatory-knowledge/criteria/**/*.json`, validates each file against `criterion.schema.json`, returns `{ byId: Map<criterion_id, SharedCriterion>, sourceFiles }`. Throws `CriterionLibraryValidationError` on schema failure or `criterion_id`/`regime` mismatch.
+- New `resolveCriterionRefs(refs, library, framework)` resolves each `{ ref, weight }` against the criterion library and runs three checks: existence (criterion present in library); `applies_to` membership (referenced criterion's `applies_to` array includes the framework's id); `regime` match (criterion's `regime` equals framework's `regime`). Returns both resolved entries and structured errors.
+
+**Engine changes** (`src/runtime.ts`):
+- v3.3-shape product_label frameworks (with a `criteria` ref array) are no longer silently skipped — they emit a `FrameworkResult` carrying one synthetic `CriterionResult` per ref with `scoring_status: "not_implemented"`, `verdict: "data_missing"`, and the ref string as `criterion_id`. A diagnostic warning is pushed onto `EngineRun.warnings` naming the framework and the pending scoring commits.
+- `FrameworkResult` gains an optional `archetype?: FrameworkArchetype` field. Populated on product_label results so the renderer can branch. Omitted on activity-aligned results — canonical EU 8.1 output is bit-identical to v0.4.2.
+- `synthesizeGaps` skips not_implemented criteria so the snapshot gap list isn't dominated by non-actionable placeholders under SFDR labels.
+
+**Renderer changes** (`src/renderers/snapshot.ts`):
+- `buildHeatmap` branches on `FrameworkResult.archetype`. Activity-aligned: one aggregated cell per framework (unchanged). Product_label: one cell per `CriterionResult`, carrying `criterion_id`, `archetype: "product_label"`, and `scoring_status: "not_implemented"` (until 1.2/1.3 promote them).
+- `HeatmapCell` gains two new optional fields: `criterion_id?: string` and `scoring_status?: "not_implemented"`. Both are status discriminators (not investor-grade content); both are added to the structural gate test's `ALLOWED_HEATMAP_CELL_KEYS` atomically with the type change. The DISALLOWED_KEYS walk and magic-marker checks are unchanged.
+- `CriterionResult` gains `scoring_status?: "not_implemented"`.
+
+**Engine integration helpers**:
+- `labelIdToSupportedLabel(label_id: string): SupportedLabel | null` and `labelIdToSupportedLabelWithWarning(label_id)` — the bridge between KB-internal `label_id` (hash-stable, unversioned) and public-facing `SupportedLabel` (version-stamped). Lives in `src/labels.ts`. Defensive on unknowns (returns `null` + optional warning), consistent with commit 1.0's strict-on-unknowns convention. If this mapping ever grows past a handful of entries, the namespace separation is leaking — surface it.
+- `filterCellsForSnapshot` does NOT need code changes for v3.3 — the existing archetype + framework matching surfaces SFDR not_implemented cells correctly under `sfdr_v1_article_8` / `sfdr_v1_article_9` labels, and the warning channel only fires on cells with no archetype (not on not_implemented cells, which carry `archetype: "product_label"`).
+
+**Methodology v3.3** (`src/lib/methodologyVersion.ts`):
+- `METHODOLOGY_VERSION` bumped from `"v3.2"` to `"v3.3"`.
+- File-level doc-comment captures the five framing decisions locked in v3.3: (1) PB scores SFDR for the developer not the FMP; (2) Article 9 90% SI floor (excluding cash + hedging); (3) SFDR 2.0 caveat (COM(2025) 841); (4) shared criterion library architecture; (5) forward-compat versioning convention.
+- Tests that hardcode `methodology_version: "v3.2"` in their `EngineDeps` continue to pass — the constant is the default; explicit values override.
+
+**Forward-compat versioning convention** (locked, applies to all future regimes):
+- `criterion_id` and `framework_id` carry a regime-version suffix (`<regime>_v<n>_*`).
+- `label_id` (KB-internal) deliberately does NOT carry the suffix — it stays hash-stable.
+- `SupportedLabel` (public-facing) carries the suffix for regimes in active rewrite (SFDR has SFDR 2.0 proposal → `sfdr_v1_*`; EU Tax and UK SDR have no comparable proposal → unversioned).
+
+**Adjacent concept-alignment from v0.4.2** (deferred again): Phase 0 test fixtures still use `label_id: "sfdr_article_8"` in `ProductLabelFramework` constructors at `src/__tests__/phase_0_3_archetype.test.ts` and `src/knowledge/__tests__/load.test.ts`. The EU 8.1 KB JSON still has `framework_applicability: [..., "sfdr_article_9", ...]` in safeguards criteria. Renaming either would change a different concept's contract or break the KB hash invariant; both remain on the unversioned strings as deliberate design (KB hash stability) and tech-debt-with-rationale (test fixtures). Revisit when SFDR scoring lands (1.2/1.3) if the fixtures need refresh.
+
+**Pre-release vs. stable**: `v0.5.0-alpha.1` is a pre-release. The app's git-URL pin stays on `#v0.4.0` (or `#main` if it tracks); pre-release tags are NOT automatically picked up by npm semver ranges. Full `v0.5.0` ships when commit 1.4 lands snapshot phrases + PDF renderer changes for SFDR.
 
 ## Authority labels
 

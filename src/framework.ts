@@ -68,6 +68,29 @@ export interface ProductLabelCriterion {
   render_paths?: ("snapshot" | "paid_report")[];
 }
 
+// Ref-based criterion entry used by the v3.3 shared-criterion-library shape.
+// Frameworks reference standalone criterion files in
+// regulatory-knowledge/criteria/<regime>/<criterion_id>.json via these entries.
+// weight is number | null — null means calibration pending.
+export interface ProductLabelCriterionRef {
+  ref: string;
+  weight: number | null;
+}
+
+// Top-level regulatory anchor on a framework JSON (v3.3 shape).
+export interface FrameworkRegulatoryAnchor {
+  regulation: string;
+  celex: string;
+  article: string;
+  url?: string | null;
+}
+
+export interface ProductLabelVerdictThresholds {
+  aligned: number | null;
+  partially_aligned: number | null;
+  not_aligned: number | null;
+}
+
 export interface ProductLabelFramework {
   archetype: "product_label";
   id: string;
@@ -78,10 +101,22 @@ export interface ProductLabelFramework {
   methodology_vintage?: string;
   effective_date: string;
   supersedes?: string;
-  // Required for product_label
-  label_id: string;
-  label_family: ProductLabelFamily;
-  eligibility_criteria: ProductLabelCriterion[];
+  // v3.2 (Phase 0) shape — kept for backward compat with existing test
+  // fixtures. New product_label frameworks (SFDR v1, UK SDR) ship under
+  // the v3.3 ref-based shape below.
+  label_id?: string;
+  label_family?: ProductLabelFamily;
+  eligibility_criteria?: ProductLabelCriterion[];
+  // v3.3 shape (Phase 1, commit 1.1). framework_id is the canonical id for
+  // ref-based frameworks; regime is the regulatory-regime version slug used
+  // to cross-check against criterion files; criteria is the ref list;
+  // verdict_thresholds and label are calibration-pending today.
+  framework_id?: string;
+  regime?: string;
+  label?: string;
+  regulatory_anchors?: FrameworkRegulatoryAnchor[];
+  criteria?: ProductLabelCriterionRef[];
+  verdict_thresholds?: ProductLabelVerdictThresholds;
   // Optional
   pai_indicators?: PAIIndicator[];
   entity_attestations?: string[];

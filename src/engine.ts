@@ -195,6 +195,13 @@ export interface CriterionResult {
   country_code?: string;
   contributing_pillars?: { criterion_id: string; verdict: Verdict }[];
   missing_items?: string[];
+
+  // v0.5.0-alpha.1 addition (Phase 1, commit 1.1): marks a criterion as
+  // declared but not yet scored. Used today by SFDR Articles 8 and 9 — the
+  // framework JSONs ship in 1.1 with scoring logic landing in 1.2 / 1.3.
+  // Renderers use this to surface "Pending implementation" cells rather
+  // than treating verdict="data_missing" as a user-missing-input signal.
+  scoring_status?: "not_implemented";
 }
 
 export interface FrameworkResult {
@@ -209,6 +216,13 @@ export interface FrameworkResult {
   minimum_safeguards_verdict: Verdict;
   overall_verdict: Verdict;
   indicative_score: number; // 0-100, banded by renderer
+
+  // v0.5.0-alpha.1 addition (Phase 1, commit 1.1). When present, lets the
+  // snapshot renderer branch on archetype — product_label results emit one
+  // cell per criterion rather than one aggregate cell. Omitted on
+  // activity-aligned results to keep canonical EU 8.1 output bit-identical
+  // to v0.4.2.
+  archetype?: FrameworkArchetype;
 }
 
 export interface EngineRun {
@@ -310,6 +324,18 @@ export interface HeatmapCell {
   // safeguards is a cross-cutting pillar summary that does not belong to any
   // archetype. Allowlisted in src/renderers/__tests__/snapshot.gate.test.ts.
   archetype?: FrameworkArchetype;
+  // v0.5.0-alpha.1 additions (Phase 1, commit 1.1).
+  // criterion_id: when present, the cell represents a single criterion of a
+  // framework (used by product_label frameworks where the heatmap surfaces
+  // per-criterion status). When absent, the cell represents an aggregated
+  // framework verdict (the existing activity_aligned EU 8.1 behaviour).
+  criterion_id?: string;
+  // scoring_status: "not_implemented" marks a cell as declared-but-not-scored.
+  // The renderer reads this to display "Pending implementation" instead of
+  // collapsing verdict="data_missing" to "your data is missing." Allowlisted
+  // in snapshot.gate.test.ts. Not investor-grade content — purely a status
+  // discriminator.
+  scoring_status?: "not_implemented";
 }
 
 export interface PillarVerdict {

@@ -60,6 +60,16 @@ const ALLOWED_HEATMAP_CELL_KEYS = [
   // and ICMA scoring lands). Not investor-grade content — purely a row
   // label — so its addition does not relax the gate.
   "archetype",
+  // Added in v0.5.0-alpha.1 (Phase 1, commit 1.1). criterion_id identifies
+  // which criterion of a product_label framework a cell represents
+  // (product_label heatmaps surface per-criterion cells, unlike
+  // activity_aligned's aggregated single cell). scoring_status marks a
+  // cell as declared-but-not-scored ("not_implemented"); the renderer
+  // surfaces these as "Pending implementation" pending SFDR scoring in
+  // commits 1.2 / 1.3. Neither is investor-grade content — both are
+  // status discriminators — so their addition does not relax the gate.
+  "criterion_id",
+  "scoring_status",
 ];
 const ALLOWED_PILLAR_VERDICT_KEYS = ["pillar_id", "verdict"];
 const EXPECTED_SNAPSHOT_GAP_KEYS = ["gap_id", "one_sentence_description"];

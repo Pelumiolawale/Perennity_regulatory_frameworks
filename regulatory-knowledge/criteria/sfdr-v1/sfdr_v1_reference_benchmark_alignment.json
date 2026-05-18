@@ -1,0 +1,20 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_reference_benchmark_alignment",
+  "name": "Designated reference benchmark alignment (where applicable)",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 9(1) (where a reference benchmark is designated, alignment with sustainable investment objective); Article 9(3) (carbon-reduction objective Climate Transition / Paris-Aligned benchmark route)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    }
+  ],
+  "axes": ["entity"],
+  "applies_to": ["sfdr_v1_article_9"],
+  "scoring_status": "not_implemented",
+  "methodology_version_introduced": "v3.3",
+  "summary": "Where the product designates a reference benchmark, tests whether the designated benchmark is aligned with the sustainable investment objective declared under Article 9(1), or (for carbon-reduction objectives) is an EU Climate Transition Benchmark or EU Paris-Aligned Benchmark under Article 9(3). If no benchmark is designated, this criterion is not applicable and contributes no signal.",
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), the reference-benchmark route is expected to be retained as one option among several for evidencing the sustainable investment objective. PB Art 9 verdicts issued under methodology v3.3 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}
