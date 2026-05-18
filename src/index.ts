@@ -51,6 +51,7 @@ export {
   loadKnowledgeBase,
   compileValidator,
   validateActivity,
+  validateFramework,
   computeKnowledgeBaseHash,
   computeSchemaHash,
   canonicalStringify,
@@ -62,6 +63,28 @@ export type {
   ValidationIssue,
   CompiledValidator,
 } from "./knowledge";
+
+// --- Framework archetype types (phase 0, commit 0.1) ------------------------
+// Three-archetype discriminated union over Activity. The runtime continues to
+// consume Activity[] in v0.3.0; broadening lands in commit 0.2. See
+// src/framework.ts for the type definitions and src/prototype/ on branch
+// spike/archetype-prototype for the validating spike that informed the design.
+export type {
+  FrameworkArchetype,
+  ActivityAlignedFramework,
+  ProductLabelFramework,
+  ProductLabelFamily,
+  ProductLabelCriterion,
+  ProductLabelInputAxis,
+  PAIIndicator,
+  SustainableInvestmentCommitment,
+  IssuanceFramework,
+  IssuanceProcessComponent,
+  IssuanceProcessComponentId,
+  IssuanceCriterion,
+  IssuanceInputAxis,
+  AnyFramework,
+} from "./framework";
 
 // --- Contract & domain types ------------------------------------------------
 // `Engine` is the interface contract. `DeterministicEngine` (above) is the

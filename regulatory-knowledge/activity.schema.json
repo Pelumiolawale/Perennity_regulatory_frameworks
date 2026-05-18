@@ -1,21 +1,24 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://perennitybridge.com/schemas/activity.schema.json",
-  "title": "Regulatory Activity",
-  "description": "Structured representation of a single activity/criterion set under a sustainable finance framework. Every framework parsed into the Perennity regulatory knowledge base must satisfy this schema. Designed for primary-source traceability and methodology-version auditability.",
+  "title": "Regulatory Framework",
+  "description": "Structured representation of a single framework definition under a sustainable finance regime. Three archetypes: activity_aligned (TSC + DNSH, e.g. EU Taxonomy), product_label (fund-level eligibility, e.g. SFDR / UK SDR), issuance_framework (bond-level use-of-proceeds, e.g. ICMA GBP). The archetype discriminator is optional; JSON without an explicit archetype field is treated as activity_aligned for backward compat with pre-v3.3 framework definitions. Every framework parsed into the Perennity regulatory knowledge base must satisfy this schema. Designed for primary-source traceability and methodology-version auditability.",
   "type": "object",
   "required": [
     "id",
     "framework",
     "framework_version",
     "framework_source_hash",
-    "activity_code",
-    "activity_name",
-    "environmental_objective",
     "methodology_version",
     "effective_date"
   ],
   "properties": {
+    "archetype": {
+      "type": "string",
+      "enum": ["activity_aligned", "product_label", "issuance_framework"],
+      "description": "Framework archetype discriminator. Omitted = activity_aligned (backward-compat default)."
+    },
+
     "id": {
       "type": "string",
       "pattern": "^[a-z0-9_]+$",
@@ -44,12 +47,32 @@
       "pattern": "^sha256:[a-f0-9]{64}$",
       "description": "SHA-256 hash of the canonical source document the data was parsed from. Bump this when the underlying regulation changes."
     },
+    "methodology_version": {
+      "type": "string",
+      "pattern": "^v\\d+\\.\\d+$",
+      "description": "Perennity methodology version this framework definition is bound to. Example: v3.2"
+    },
+    "methodology_vintage": {
+      "type": "string",
+      "description": "Human-readable vintage of the methodology version. Example: May 2026."
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date from which this framework definition is in force for new reports."
+    },
+    "supersedes": {
+      "type": "string",
+      "description": "id of a prior framework definition this one replaces (for change-log traceability)."
+    },
+
     "activity_code": {
       "type": "string",
-      "description": "Framework-native activity code. Example: 8.1 for EU Taxonomy data processing."
+      "description": "Framework-native activity code. Required for archetype=activity_aligned. Example: 8.1 for EU Taxonomy data processing."
     },
     "activity_name": {
-      "type": "string"
+      "type": "string",
+      "description": "Required for archetype=activity_aligned."
     },
     "nace_codes": {
       "type": "array",
@@ -66,25 +89,8 @@
         "pollution_prevention",
         "biodiversity_and_ecosystems",
         "not_applicable"
-      ]
-    },
-    "methodology_version": {
-      "type": "string",
-      "pattern": "^v\\d+\\.\\d+$",
-      "description": "Perennity methodology version this activity definition is bound to. Example: v3.2"
-    },
-    "methodology_vintage": {
-      "type": "string",
-      "description": "Human-readable vintage of the methodology version. Example: May 2026."
-    },
-    "effective_date": {
-      "type": "string",
-      "format": "date",
-      "description": "Date from which this activity definition is in force for new reports."
-    },
-    "supersedes": {
-      "type": "string",
-      "description": "id of a prior activity definition this one replaces (for change-log traceability)."
+      ],
+      "description": "Required for archetype=activity_aligned."
     },
     "substantial_contribution_criteria": {
       "type": "array",
@@ -101,7 +107,7 @@
     },
     "safeguards_criteria": {
       "type": "array",
-      "description": "Minimum-safeguards criteria per Regulation (EU) 2020/852 Article 18. Currently attached under Activity 8.1; will move to framework-level once SFDR / EuGBS frameworks land. TODO: hoist when multi-framework KB lands.",
+      "description": "Minimum-safeguards criteria per Regulation (EU) 2020/852 Article 18. Currently attached under Activity 8.1; will move to framework-level once SFDR / EuGBS frameworks land.",
       "items": { "$ref": "#/$defs/criterion" }
     },
     "minimum_safeguards": {
@@ -114,8 +120,94 @@
           "items": { "type": "string" }
         }
       }
+    },
+
+    "label_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Required for archetype=product_label. Example: sfdr_article_8."
+    },
+    "label_family": {
+      "type": "string",
+      "enum": ["sfdr", "uk_sdr"],
+      "description": "Required for archetype=product_label."
+    },
+    "eligibility_criteria": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/product_label_criterion" },
+      "description": "Required for archetype=product_label. Flat list of eligibility criteria; there is no SC/DNSH split for product labels."
+    },
+    "pai_indicators": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pai_indicator" },
+      "description": "Optional PAI indicator references (SFDR product_label)."
+    },
+    "entity_attestations": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional list of attestation-keys the fund manager must answer at the entity level (e.g. ungc_compliance, board_diversity)."
+    },
+    "sustainable_investment_commitment": {
+      "type": "object",
+      "description": "Optional Article 8/9-style minimum proportion of sustainable investments commitment.",
+      "properties": {
+        "minimum_proportion": { "type": "number", "minimum": 0, "maximum": 1 },
+        "categories": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "framework_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Required for archetype=issuance_framework. Example: icma_gbp_2021."
+    },
+    "process_components": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/issuance_process_component" },
+      "description": "Required for archetype=issuance_framework. The four ICMA GBP process components or equivalent."
+    },
+    "external_review_type": {
+      "type": "string",
+      "enum": ["second_party_opinion", "verification", "certification", "rating"],
+      "description": "Optional declared external review modality for the issuance."
     }
   },
+
+  "allOf": [
+    {
+      "if": {
+        "required": ["archetype"],
+        "properties": { "archetype": { "const": "product_label" } }
+      },
+      "then": {
+        "required": ["label_id", "label_family", "eligibility_criteria"]
+      }
+    },
+    {
+      "if": {
+        "required": ["archetype"],
+        "properties": { "archetype": { "const": "issuance_framework" } }
+      },
+      "then": {
+        "required": ["framework_id", "process_components"]
+      }
+    },
+    {
+      "if": {
+        "anyOf": [
+          { "not": { "required": ["archetype"] } },
+          {
+            "required": ["archetype"],
+            "properties": { "archetype": { "const": "activity_aligned" } }
+          }
+        ]
+      },
+      "then": {
+        "required": ["activity_code", "activity_name", "environmental_objective"]
+      }
+    }
+  ],
+
   "$defs": {
     "criterion": {
       "type": "object",
@@ -277,6 +369,129 @@
         "reference_document": { "type": "string" },
         "unit": { "type": "string" },
         "required": { "type": "boolean", "default": true }
+      }
+    },
+    "product_label_criterion": {
+      "type": "object",
+      "required": [
+        "id",
+        "criterion",
+        "source_reference",
+        "source_text",
+        "requirement_type",
+        "scoring_logic_ref",
+        "input_scope"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "criterion": { "type": "string" },
+        "source_reference": { "type": "string" },
+        "source_text": { "type": "string" },
+        "requirement_type": {
+          "type": "string",
+          "enum": [
+            "numeric_threshold",
+            "compliance_attestation",
+            "qualitative_assessment",
+            "verification_requirement",
+            "benchmarking",
+            "rollup"
+          ]
+        },
+        "scoring_logic_ref": {
+          "type": "string",
+          "pattern": "^logic\\.[a-z0-9_]+\\.v\\d+$"
+        },
+        "input_scope": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["project", "entity"] },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Input axes this criterion may read. product_label criteria MUST NOT read issuance-level inputs."
+        },
+        "authority_level": { "type": "integer", "enum": [1, 2, 3] },
+        "authority_source": { "type": "string" },
+        "snapshot_inclusion": { "type": "boolean" },
+        "render_paths": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["snapshot", "paid_report"] }
+        }
+      }
+    },
+    "issuance_criterion": {
+      "type": "object",
+      "required": [
+        "id",
+        "criterion",
+        "source_reference",
+        "source_text",
+        "requirement_type",
+        "scoring_logic_ref",
+        "input_scope"
+      ],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "criterion": { "type": "string" },
+        "source_reference": { "type": "string" },
+        "source_text": { "type": "string" },
+        "requirement_type": {
+          "type": "string",
+          "enum": [
+            "numeric_threshold",
+            "compliance_attestation",
+            "qualitative_assessment",
+            "verification_requirement",
+            "benchmarking",
+            "rollup"
+          ]
+        },
+        "scoring_logic_ref": {
+          "type": "string",
+          "pattern": "^logic\\.[a-z0-9_]+\\.v\\d+$"
+        },
+        "input_scope": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["project", "issuance"] },
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Input axes this criterion may read. issuance_framework criteria MUST NOT read entity-level inputs."
+        },
+        "authority_level": { "type": "integer", "enum": [1, 2, 3] },
+        "authority_source": { "type": "string" },
+        "snapshot_inclusion": { "type": "boolean" },
+        "render_paths": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["snapshot", "paid_report"] }
+        }
+      }
+    },
+    "issuance_process_component": {
+      "type": "object",
+      "required": ["id", "heading", "criteria"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "use_of_proceeds",
+            "project_evaluation_and_selection",
+            "management_of_proceeds",
+            "reporting"
+          ]
+        },
+        "heading": { "type": "string" },
+        "criteria": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/issuance_criterion" }
+        }
+      }
+    },
+    "pai_indicator": {
+      "type": "object",
+      "required": ["indicator_id", "description", "mandatory"],
+      "properties": {
+        "indicator_id": { "type": "string" },
+        "description": { "type": "string" },
+        "mandatory": { "type": "boolean" }
       }
     }
   }

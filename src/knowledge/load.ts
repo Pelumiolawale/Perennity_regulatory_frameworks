@@ -4,6 +4,7 @@ import fg from "fast-glob";
 import Ajv2020, { type ErrorObject, type ValidateFunction } from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import type { Activity } from "../engine";
+import type { AnyFramework } from "../framework";
 import { computeKnowledgeBaseHash, computeSchemaHash } from "./hash";
 
 export interface LoadOptions {
@@ -47,27 +48,58 @@ function formatIssue(issue: ValidationIssue): string {
 }
 
 export interface CompiledValidator {
-  validate: ValidateFunction<Activity>;
+  // Broadened from ValidateFunction<Activity> to ValidateFunction<AnyFramework>
+  // in commit phase-0/0.1. The compiled Ajv function now dispatches on the
+  // `archetype` discriminator and accepts all three archetypes. Activity is
+  // assignable to AnyFramework (via ActivityAlignedFramework), so callers
+  // that previously passed Activity-shaped data continue to type-check.
+  validate: ValidateFunction<AnyFramework>;
   schemaSource: string;
 }
 
 export async function compileValidator(schemaPath: string): Promise<CompiledValidator> {
   const schemaSource = await fs.readFile(schemaPath, "utf8");
   const schema = JSON.parse(schemaSource);
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  // strict: true is retained for schema-author safety. strictRequired is
+  // relaxed because the archetype-discriminated schema uses an `allOf` chain
+  // of `if`/`then` blocks whose `then.required` lists reference properties
+  // declared at the parent level — a valid JSON Schema 2020-12 pattern that
+  // strictRequired would otherwise reject.
+  const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
   addFormats(ajv);
-  const validate = ajv.compile<Activity>(schema);
+  const validate = ajv.compile<AnyFramework>(schema);
   return { validate, schemaSource };
 }
 
+// Backward-compat wrapper. Narrows the validated data to Activity for callers
+// that only handle the activity_aligned archetype. The loader (loadKnowledgeBase)
+// uses this today because the on-disk KB contains only activity_aligned
+// frameworks (EU Taxonomy 8.1). Use validateFramework for archetype-dispatched
+// downstream code in future commits.
 export function validateActivity(
-  validate: ValidateFunction<Activity>,
+  validate: ValidateFunction<AnyFramework>,
   data: unknown,
 ):
   | { valid: true; activity: Activity }
   | { valid: false; errors: ErrorObject[] } {
   if (validate(data)) {
-    return { valid: true, activity: data };
+    // The compiled validator accepts any archetype. Callers of this wrapper
+    // are responsible for ensuring the input is activity_aligned-shaped.
+    return { valid: true, activity: data as Activity };
+  }
+  return { valid: false, errors: validate.errors ?? [] };
+}
+
+// New in commit phase-0/0.1. Returns the broader AnyFramework union; use
+// this when the downstream consumer dispatches on the archetype field.
+export function validateFramework(
+  validate: ValidateFunction<AnyFramework>,
+  data: unknown,
+):
+  | { valid: true; framework: AnyFramework }
+  | { valid: false; errors: ErrorObject[] } {
+  if (validate(data)) {
+    return { valid: true, framework: data };
   }
   return { valid: false, errors: validate.errors ?? [] };
 }

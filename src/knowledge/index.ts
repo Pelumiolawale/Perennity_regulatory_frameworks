@@ -7,6 +7,7 @@ export {
 export {
   compileValidator,
   validateActivity,
+  validateFramework,
   loadKnowledgeBase,
   KnowledgeBaseValidationError,
 } from "./load";
