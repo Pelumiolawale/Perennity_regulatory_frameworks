@@ -1,0 +1,26 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_sustainable_investment_floor",
+  "name": "Sustainable investment proportion floor (PB 90%)",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 2(17) (definition of 'sustainable investment'); Article 9(1) (Article 9 products must invest in economic activities that contribute to a sustainable objective)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "ESMA Guidelines on funds' names using ESG or sustainability-related terms",
+      "celex": "C/2024/3140",
+      "article": "Section 2 (sustainable investment proportion thresholds for fund-name eligibility, May 2024)",
+      "url": "https://www.esma.europa.eu/sites/default/files/2024-05/ESMA34-1592494965-657_Final_Report_Guidelines_on_funds_names.pdf"
+    }
+  ],
+  "axes": ["entity"],
+  "applies_to": ["sfdr_v1_article_9"],
+  "scoring_status": "not_implemented",
+  "methodology_version_introduced": "v3.3",
+  "summary": "PB requires a minimum 90% sustainable investment proportion (per SFDR Art 2(17)) for an Article 9 alignment verdict, excluding cash held for liquidity and instruments held purely for hedging. The 90% threshold sits above the converged market median (~80%) and below the literal reading of the Commission's June 2022 Q&A (effectively 100%); selected to preserve a meaningful qualitative gap between Article 8 and Article 9 verdicts and to front-run potential regulatory tightening. Necessary but not sufficient — DNSH, good-governance, and pre-contractual objective tests must independently pass.",
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), the sustainable investment proportion threshold for the highest-tier category is expected to be set at or above 90%; PB's 90% floor was selected partly to align with this anticipated direction. PB Art 9 verdicts issued under methodology v3.3 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}

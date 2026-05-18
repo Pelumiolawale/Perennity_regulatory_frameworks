@@ -1,0 +1,46 @@
+{
+  "$schema": "../../../activity.schema.json",
+  "archetype": "product_label",
+  "id": "sfdr_v1_article_9",
+  "framework_id": "sfdr_v1_article_9",
+  "regime": "sfdr_v1",
+  "label": "SFDR Article 9 (sustainable investment objective)",
+  "framework": "SFDR",
+  "framework_version": "Regulation_2019_2088_consolidated_2024",
+  "framework_source_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "methodology_version": "v3.3",
+  "methodology_vintage": "May 2026",
+  "effective_date": "2026-05-18",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 9 (financial products pursuing a sustainable investment objective)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "Commission Delegated Regulation (EU) 2022/1288",
+      "celex": "02022R1288-20230220",
+      "article": "Annex III (pre-contractual disclosure template for Article 9 products); Annex V (periodic disclosure template for Article 9 products)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02022R1288-20230220"
+    }
+  ],
+  "criteria": [
+    { "ref": "sfdr_v1_e_s_characteristics_promotion", "weight": null },
+    { "ref": "sfdr_v1_good_governance_attestation", "weight": null },
+    { "ref": "sfdr_v1_pai_consideration_policy", "weight": null },
+    { "ref": "sfdr_v1_dnsh_assessment", "weight": null },
+    { "ref": "sfdr_v1_pre_contractual_disclosure", "weight": null },
+    { "ref": "sfdr_v1_taxonomy_alignment_disclosure", "weight": null },
+    { "ref": "sfdr_v1_periodic_reporting_commitment", "weight": null },
+    { "ref": "sfdr_v1_sustainable_investment_objective", "weight": null },
+    { "ref": "sfdr_v1_sustainable_investment_floor", "weight": null },
+    { "ref": "sfdr_v1_pai_integration_evidence", "weight": null },
+    { "ref": "sfdr_v1_reference_benchmark_alignment", "weight": null }
+  ],
+  "verdict_thresholds": {
+    "aligned": null,
+    "partially_aligned": null,
+    "not_aligned": 0
+  }
+}

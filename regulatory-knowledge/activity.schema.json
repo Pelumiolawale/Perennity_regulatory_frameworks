@@ -159,7 +159,7 @@
     "framework_id": {
       "type": "string",
       "pattern": "^[a-z0-9_]+$",
-      "description": "Required for archetype=issuance_framework. Example: icma_gbp_2021."
+      "description": "Required for archetype=issuance_framework. Example: icma_gbp_2021. Also used as the canonical ID for product_label frameworks under the v3.3 shared-criterion-library shape (e.g. sfdr_v1_article_8)."
     },
     "process_components": {
       "type": "array",
@@ -170,6 +170,35 @@
       "type": "string",
       "enum": ["second_party_opinion", "verification", "certification", "rating"],
       "description": "Optional declared external review modality for the issuance."
+    },
+
+    "regime": {
+      "type": "string",
+      "pattern": "^[a-z]+_v\\d+$",
+      "description": "Regulatory regime + version slug. Added in v3.3 alongside the shared criterion library. Required for product_label frameworks that use the ref-based criteria shape; the loader cross-checks this against the regime field on each referenced criterion. Example: sfdr_v1."
+    },
+    "label": {
+      "type": "string",
+      "description": "Human-readable label for product_label frameworks under the v3.3 ref-based shape. Example: 'SFDR Article 8 (E/S characteristics)'."
+    },
+    "regulatory_anchors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/regulatory_anchor" },
+      "description": "Primary-source citations for the framework. Used by v3.3 product_label and issuance_framework JSONs; legacy activity-aligned files cite via individual criterion source_reference fields."
+    },
+    "criteria": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/criterion_ref" },
+      "description": "Ref-based criteria list. Added in v3.3 as an alternative to the legacy inline shapes (substantial_contribution_criteria / dnsh_criteria / eligibility_criteria). Each entry references a standalone criterion in regulatory-knowledge/criteria/<regime>/<criterion_id>.json. Currently used by product_label frameworks (SFDR v1); future framework definitions across all archetypes may migrate to this shape."
+    },
+    "verdict_thresholds": {
+      "type": "object",
+      "description": "Verdict band thresholds. aligned >= partially_aligned > not_aligned. Values are number | null; null means calibration pending (Phase 1 commit 1.1 ships all SFDR frameworks with thresholds null).",
+      "properties": {
+        "aligned": { "type": ["number", "null"] },
+        "partially_aligned": { "type": ["number", "null"] },
+        "not_aligned": { "type": ["number", "null"] }
+      }
     }
   },
 
@@ -180,7 +209,14 @@
         "properties": { "archetype": { "const": "product_label" } }
       },
       "then": {
-        "required": ["label_id", "label_family", "eligibility_criteria"]
+        "anyOf": [
+          {
+            "required": ["label_id", "label_family", "eligibility_criteria"]
+          },
+          {
+            "required": ["framework_id", "regime", "criteria"]
+          }
+        ]
       }
     },
     {
@@ -492,6 +528,31 @@
         "indicator_id": { "type": "string" },
         "description": { "type": "string" },
         "mandatory": { "type": "boolean" }
+      }
+    },
+    "criterion_ref": {
+      "type": "object",
+      "required": ["ref", "weight"],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^[a-z]+_v\\d+_[a-z][a-z0-9_]*$",
+          "description": "criterion_id of a criterion in the shared library. Resolved by the loader against regulatory-knowledge/criteria/<regime>/<criterion_id>.json."
+        },
+        "weight": {
+          "type": ["number", "null"],
+          "description": "Per-criterion weight in the framework's verdict aggregation. null = calibration pending (Phase 1 commit 1.1 ships all SFDR criteria with weight: null)."
+        }
+      }
+    },
+    "regulatory_anchor": {
+      "type": "object",
+      "required": ["regulation", "celex", "article"],
+      "properties": {
+        "regulation": { "type": "string", "minLength": 1 },
+        "celex": { "type": "string", "minLength": 1 },
+        "article": { "type": "string", "minLength": 1 },
+        "url": { "type": ["string", "null"] }
       }
     }
   }

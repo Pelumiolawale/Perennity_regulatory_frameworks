@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://perennitybridge.com/schemas/criterion.schema.json",
+  "title": "Shared Criterion",
+  "description": "Standalone criterion file in the shared criterion library. Phase 1 commit 1.1 introduces this schema alongside the first SFDR criteria. A framework JSON references a criterion via { ref, weight } in its top-level criteria array; the loader resolves refs against this library. criterion_id is version-stamped (e.g. sfdr_v1_*), independent of the KB-internal label_id namespace.",
+  "type": "object",
+  "required": [
+    "criterion_id",
+    "name",
+    "regime",
+    "regulatory_anchors",
+    "axes",
+    "applies_to",
+    "scoring_status",
+    "methodology_version_introduced",
+    "summary"
+  ],
+  "properties": {
+    "criterion_id": {
+      "type": "string",
+      "pattern": "^[a-z]+_v\\d+_[a-z][a-z0-9_]*$",
+      "description": "Version-stamped criterion identifier. Format: <regime>_v<n>_<criterion_slug>. Example: sfdr_v1_good_governance_attestation."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable criterion name."
+    },
+    "regime": {
+      "type": "string",
+      "pattern": "^[a-z]+_v\\d+$",
+      "description": "Regulatory regime + version slug. MUST match the regime portion of criterion_id. Example: sfdr_v1."
+    },
+    "regulatory_anchors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/regulatory_anchor" },
+      "description": "Primary-source citations. At least one required."
+    },
+    "axes": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["project", "entity", "issuance"]
+      },
+      "description": "LogicInput axes this criterion reads. Matches the engine's InputAxis type from Phase 0."
+    },
+    "applies_to": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string" },
+      "description": "Framework ids that may reference this criterion. The validator checks that any framework using { ref: criterion_id } appears in this list."
+    },
+    "scoring_status": {
+      "type": "string",
+      "enum": ["not_implemented", "implemented", "deprecated"],
+      "description": "Current scoring implementation state. SFDR commit 1.1 ships criteria with not_implemented; commits 1.2 and 1.3 promote to implemented."
+    },
+    "methodology_version_introduced": {
+      "type": "string",
+      "pattern": "^v\\d+\\.\\d+$",
+      "description": "Methodology version in which this criterion was introduced. Example: v3.3."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One- to three-sentence summary of what this criterion tests."
+    },
+    "successor_regime_note": {
+      "type": "string",
+      "description": "Optional free-text note flagging a pending regulatory rewrite affecting this criterion (e.g. SFDR 2.0 proposal COM(2025) 841)."
+    }
+  },
+  "$defs": {
+    "regulatory_anchor": {
+      "type": "object",
+      "required": ["regulation", "celex", "article"],
+      "properties": {
+        "regulation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable name of the regulation. Example: Regulation (EU) 2019/2088 (SFDR)."
+        },
+        "celex": {
+          "type": "string",
+          "minLength": 1,
+          "description": "CELEX identifier of the cited instrument (consolidated variant where applicable). Example: 02019R2088-20240109."
+        },
+        "article": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Article / section reference within the instrument. Example: Article 8(1)."
+        },
+        "url": {
+          "type": ["string", "null"],
+          "description": "Optional EUR-Lex (or equivalent) URL for direct access to the primary source."
+        }
+      }
+    }
+  }
+}

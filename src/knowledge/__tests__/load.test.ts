@@ -37,10 +37,22 @@ describe("loadKnowledgeBase — valid input", () => {
   test("loads the real activity, populates byId, returns sha256 hashes", async () => {
     const kb = await loadKnowledgeBase({ rootDir: REAL_KB });
 
+    // activities[] is partitioned to activity-aligned frameworks only, so
+    // EU 8.1 remains the lone entry even after Phase 1 commit 1.1 added the
+    // two SFDR product_label JSONs. This partition is what keeps the EU 8.1
+    // knowledge_base_hash invariant stable; see the dedicated assertion in
+    // "hashing — phase-0/0.1 invariants" below.
     assert.equal(kb.activities.length, 1);
     assert.equal(kb.activities[0].id, "eu_tax_climate_8_1");
     assert.equal(kb.byId.get("eu_tax_climate_8_1"), kb.activities[0]);
-    assert.equal(kb.sourceFiles.length, 1);
+    // sourceFiles enumerates every framework JSON the loader walked,
+    // independent of archetype. Bumps when new frameworks land. As of
+    // v0.5.0-alpha.1: EU 8.1 + SFDR Art 8 + SFDR Art 9 = 3.
+    assert.equal(kb.sourceFiles.length, 3);
+    // The full frameworks collection includes both archetypes.
+    assert.equal(kb.frameworks.length, 3);
+    assert.ok(kb.frameworksById.get("sfdr_v1_article_8"));
+    assert.ok(kb.frameworksById.get("sfdr_v1_article_9"));
     assert.match(kb.knowledge_base_hash, /^sha256:[a-f0-9]{64}$/);
     assert.match(kb.schema_hash, /^sha256:[a-f0-9]{64}$/);
     assert.deepEqual(kb.warnings, []);

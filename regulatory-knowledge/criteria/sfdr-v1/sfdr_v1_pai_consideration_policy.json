@@ -1,0 +1,26 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_pai_consideration_policy",
+  "name": "Principal Adverse Impacts (PAI) consideration policy",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 4 (entity-level PAI consideration / 'comply-or-explain' statement)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    },
+    {
+      "regulation": "Commission Delegated Regulation (EU) 2022/1288",
+      "celex": "02022R1288-20230220",
+      "article": "Annex I (mandatory and additional PAI indicator tables)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02022R1288-20230220"
+    }
+  ],
+  "axes": ["entity"],
+  "applies_to": ["sfdr_v1_article_8", "sfdr_v1_article_9"],
+  "scoring_status": "not_implemented",
+  "methodology_version_introduced": "v3.3",
+  "summary": "Tests whether the developer-entity has a documented policy for considering principal adverse impacts of investment decisions on sustainability factors (PAI). The PB framing accepts a substantive policy with named indicators tracked rather than only a comply-or-explain statement.",
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), the PAI regime is expected to be retained but potentially streamlined. PB Art 8/Art 9 verdicts issued under methodology v3.3 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}

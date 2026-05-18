@@ -14,8 +14,20 @@ export interface LoadOptions {
 }
 
 export interface KnowledgeBase {
+  // Activity-aligned frameworks only. Filtered from the full frameworks
+  // collection so the knowledge_base_hash continues to be computed over
+  // activity-aligned bytes only — this preserves the EU 8.1 KB hash
+  // invariant (sha256:b3daee...d43) across Phase 1's introduction of
+  // SFDR product_label JSONs.
   activities: Activity[];
   byId: Map<string, Activity>;
+  // All frameworks parsed from the KB, including product_label and
+  // issuance_framework archetypes. Added in v0.5.0-alpha.1 (Phase 1, commit
+  // 1.1). Use `frameworks` when you need to iterate across archetypes;
+  // use `activities` when you specifically need activity-aligned frameworks
+  // (e.g. for the legacy Engine.run((ProjectInput, Activity[])) overload).
+  frameworks: AnyFramework[];
+  frameworksById: Map<string, AnyFramework>;
   knowledge_base_hash: string;
   schema_hash: string;
   sourceFiles: string[];
@@ -121,7 +133,7 @@ export async function loadKnowledgeBase(opts: LoadOptions = {}): Promise<Knowled
     await fg(globPattern, { cwd: rootDir, absolute: true, onlyFiles: true })
   ).sort();
 
-  const activities: Activity[] = [];
+  const frameworks: AnyFramework[] = [];
   const issues: ValidationIssue[] = [];
   const idToFile = new Map<string, string>();
 
@@ -147,14 +159,14 @@ export async function loadKnowledgeBase(opts: LoadOptions = {}): Promise<Knowled
       continue;
     }
 
-    const result = validateActivity(validate, parsed);
+    const result = validateFramework(validate, parsed);
     if (!result.valid) {
       issues.push({ file, errors: result.errors });
       continue;
     }
 
-    const activity = result.activity;
-    const prior = idToFile.get(activity.id);
+    const framework = result.framework;
+    const prior = idToFile.get(framework.id);
     if (prior !== undefined) {
       issues.push({
         file,
@@ -163,21 +175,28 @@ export async function loadKnowledgeBase(opts: LoadOptions = {}): Promise<Knowled
             keyword: "duplicate",
             instancePath: "/id",
             schemaPath: "",
-            params: { id: activity.id, conflictsWith: prior },
-            message: `Duplicate activity id "${activity.id}"; also declared in ${prior}`,
+            params: { id: framework.id, conflictsWith: prior },
+            message: `Duplicate framework id "${framework.id}"; also declared in ${prior}`,
           },
         ],
       });
       continue;
     }
 
-    idToFile.set(activity.id, file);
-    activities.push(activity);
+    idToFile.set(framework.id, file);
+    frameworks.push(framework);
   }
 
   if (issues.length > 0) {
     throw new KnowledgeBaseValidationError(issues);
   }
+
+  // Partition by archetype. activities[] is activity-aligned only — that's
+  // the filter that keeps the EU 8.1 knowledge_base_hash stable as we add
+  // SFDR product_label JSONs in Phase 1.1+.
+  const activities: Activity[] = frameworks
+    .filter((f) => f.archetype === undefined || f.archetype === "activity_aligned")
+    .map((f) => f as Activity);
 
   const warnings: string[] = [];
   for (const a of activities) {
@@ -189,10 +208,13 @@ export async function loadKnowledgeBase(opts: LoadOptions = {}): Promise<Knowled
   }
 
   activities.sort((x, y) => x.id.localeCompare(y.id));
+  frameworks.sort((x, y) => x.id.localeCompare(y.id));
 
   return {
     activities,
     byId: new Map(activities.map((a) => [a.id, a])),
+    frameworks,
+    frameworksById: new Map(frameworks.map((f) => [f.id, f])),
     knowledge_base_hash: computeKnowledgeBaseHash(activities),
     schema_hash: computeSchemaHash(schemaSource),
     sourceFiles: files,

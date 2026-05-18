@@ -18,6 +18,7 @@ import type {
 import type {
   ActivityAlignedFramework,
   AnyFramework,
+  ProductLabelFramework,
 } from "./framework";
 import type { RunInput } from "./inputs";
 import { getLogic } from "./logic/registry";
@@ -68,24 +69,36 @@ export class DeterministicEngine implements Engine {
     // pathological ProjectInput that happens to be inside a wrapper.
     const projectInput: ProjectInput =
       "project" in input && !("project_id" in input) ? input.project : (input as ProjectInput);
-    // Partition frameworks by archetype: activity_aligned get scored;
-    // product_label and issuance_framework are skipped with a non-fatal
-    // warning until Phase 1 (SFDR) / Phase 3 (ICMA) add their scoring
-    // paths. The warning surfaces on EngineRun.warnings — a programmatic
-    // channel the consuming app can read — rather than console.warn so
-    // tests and server contexts can observe it cleanly.
+    // Partition frameworks by archetype: activity_aligned get scored
+    // normally; product_label v3.3 ref-based frameworks (Phase 1, commit
+    // 1.1+) emit declared-but-not-scored FrameworkResults so the
+    // downstream renderer can surface per-criterion "Pending implementation"
+    // cells; issuance_framework and legacy product_label fixtures are still
+    // skipped with a warning. Full SFDR scoring lands in commits 1.2 and 1.3.
     const activities: Activity[] = [];
+    const productLabelV3_3: ProductLabelFramework[] = [];
     const warnings: string[] = [];
     for (const f of frameworks) {
       if (f.archetype === undefined || f.archetype === "activity_aligned") {
         activities.push(f as ActivityAlignedFramework);
+      } else if (
+        f.archetype === "product_label" &&
+        Array.isArray((f as ProductLabelFramework).criteria)
+      ) {
+        // v3.3 ref-based product_label (e.g. sfdr_v1_article_8). Emit
+        // not_implemented CriterionResults; warn that scoring isn't live yet.
+        productLabelV3_3.push(f as ProductLabelFramework);
       } else {
         warnings.push(
           `Framework "${f.id}" declares archetype="${f.archetype}" but product-label and issuance-framework scoring is not implemented yet (Phase 1 / Phase 3 work). The framework will be skipped.`,
         );
       }
     }
-    const framework_results = activities.map((a) => this.scoreActivity(a, projectInput));
+    const activity_results = activities.map((a) => this.scoreActivity(a, projectInput));
+    const product_label_results = productLabelV3_3.map((p) =>
+      this.declareProductLabel(p, warnings),
+    );
+    const framework_results = [...activity_results, ...product_label_results];
     return {
       run_id: this.generateId(),
       run_timestamp: this.now(),
@@ -96,6 +109,45 @@ export class DeterministicEngine implements Engine {
       framework_results,
       gap_list: synthesizeGaps(framework_results),
       ...(warnings.length > 0 ? { warnings } : {}),
+    };
+  }
+
+  // Construct a FrameworkResult for a v3.3 product_label framework whose
+  // scoring is declared-only (Phase 1 commit 1.1 state). Emits one synthetic
+  // CriterionResult per ref with scoring_status="not_implemented" and
+  // verdict="data_missing" as a neutral placeholder. The downstream snapshot
+  // renderer detects scoring_status and surfaces "Pending implementation"
+  // cells instead of treating data_missing as a user-missing-input signal.
+  private declareProductLabel(
+    framework: ProductLabelFramework,
+    warnings: string[],
+  ): FrameworkResult {
+    const refs = framework.criteria ?? [];
+    const sc_results: CriterionResult[] = refs.map((r) => ({
+      criterion_id: r.ref,
+      verdict: "data_missing" as const,
+      gap_summary: "",
+      evidence_refs: [],
+      scoring_logic_ref: "not_implemented",
+      scoring_logic_version: "n/a",
+      scoring_status: "not_implemented" as const,
+    }));
+    warnings.push(
+      `Framework "${framework.id}" (${framework.framework}) is declared with ${refs.length} criterion ref(s) but scoring is not yet implemented (Phase 1, commit 1.1). Full Art 8 scoring lands in commit 1.2, Art 9 in commit 1.3. Cells will render as "Pending implementation".`,
+    );
+    return {
+      framework: framework.framework,
+      framework_version: framework.framework_version,
+      framework_source_hash: framework.framework_source_hash,
+      activity_id: framework.id,
+      sc_results,
+      dnsh_results: [],
+      safeguards_results: [],
+      methodology_results: [],
+      minimum_safeguards_verdict: "not_applicable",
+      overall_verdict: "not_applicable",
+      indicative_score: 0,
+      archetype: "product_label",
     };
   }
 
@@ -292,6 +344,11 @@ function synthesizeGaps(results: FrameworkResult[]): GapItem[] {
       // Skip individual safeguards pillars in gap list — rollup represents
       // them. Avoids double-counting "pillar partial" + "rollup partial".
       if (r.criterion_id.startsWith("safeguards_")) continue;
+      // v0.5.0-alpha.1 (Phase 1, commit 1.1): skip not_implemented criteria —
+      // they surface in the heatmap as "Pending implementation" cells and
+      // would otherwise dominate the gap list under SFDR labels with
+      // non-actionable noise.
+      if (r.scoring_status === "not_implemented") continue;
       gaps.push({
         gap_id: `${fr.activity_id}.${r.criterion_id}`,
         framework: fr.framework,
