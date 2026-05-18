@@ -143,22 +143,37 @@ export class SnapshotRenderer implements Renderer<SnapshotOutput> {
         archetype: "activity_aligned" as const,
       }));
 
-    // v0.5.0-alpha.1 (Phase 1, commit 1.1): product_label frameworks emit one
-    // cell per declared criterion. Today every cell carries
-    // scoring_status="not_implemented" (SFDR scoring lands in 1.2 / 1.3); the
-    // criterion_id is the ref from the framework JSON.
+    // v0.5.0-alpha.1+ (Phase 1, commits 1.1 and 1.2): product_label frameworks
+    // emit one cell per declared criterion. Cells with scoring_status carry
+    // "Pending implementation" status; scored SFDR cells carry full
+    // band/rationale/evidence/numeric payload from the SFDR orchestrator.
     const productLabelCells: HeatmapCell[] = frs
       .filter((fr) => fr.archetype === "product_label")
       .flatMap((fr) =>
-        fr.sc_results.map((r) => ({
-          framework: fr.framework,
-          verdict: collapseVerdict(r.verdict),
-          archetype: "product_label" as const,
-          criterion_id: r.criterion_id,
-          ...(r.scoring_status === "not_implemented"
-            ? { scoring_status: "not_implemented" as const }
-            : {}),
-        })),
+        fr.sc_results.map((r): HeatmapCell => {
+          const cell: HeatmapCell = {
+            framework: fr.framework,
+            verdict: collapseProductLabelVerdict(r.verdict),
+            archetype: "product_label" as const,
+            criterion_id: r.criterion_id,
+          };
+          if (r.scoring_status === "not_implemented") {
+            cell.scoring_status = "not_implemented";
+          }
+          if (r.rationale_text) {
+            cell.rationale_text = r.rationale_text;
+          }
+          if (r.evidence_refs && r.evidence_refs.length > 0) {
+            cell.evidence_refs = r.evidence_refs;
+          }
+          if (r.not_applicable_rationale) {
+            cell.not_applicable_rationale = r.not_applicable_rationale;
+          }
+          if (r.numeric_value) {
+            cell.numeric_value = r.numeric_value;
+          }
+          return cell;
+        }),
       );
 
     const safeguardsCell = buildSafeguardsCell(frs);
@@ -198,6 +213,29 @@ function collapseVerdict(v: Verdict): "pass" | "partial" | "fail" {
   if (v === "fail") return "fail";
   // partial / data_missing both collapse to "partial" — IC-voice "not green yet".
   return "partial";
+}
+
+// v0.5.0-alpha.2 (Phase 1, commit 1.2): product_label cells carry SFDR
+// five-band verdicts plus not_applicable. Pass through verbatim — these
+// values are explicitly part of HeatmapCell.verdict's union. not_implemented
+// cells from the underlying CriterionResult come in as data_missing on the
+// verdict field; collapse to "data_missing" to keep the existing renderer
+// path stable, and surface the scoring_status flag separately.
+function collapseProductLabelVerdict(v: Verdict): HeatmapCell["verdict"] {
+  if (
+    v === "aligned" ||
+    v === "partially_aligned" ||
+    v === "not_aligned" ||
+    v === "insufficient_evidence" ||
+    v === "not_applicable"
+  ) {
+    return v;
+  }
+  if (v === "pass" || v === "fail") return v;
+  // Legacy partial / data_missing / banded / deprecated collapse to data_missing
+  // for product_label cells (these aren't expected on SFDR paths but stay
+  // defensive).
+  return "data_missing";
 }
 
 // Safeguards cell preserves data_missing as a distinct state. The free-tier

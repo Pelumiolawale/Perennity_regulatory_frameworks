@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://perennitybridge.com/schemas/constants.schema.json",
+  "title": "Referenceable Constants File",
+  "description": "Shared schema for the referenceable constants files under regulatory-knowledge/constants/. Each file declares a `kind` identifying its semantic role; loaders look up by kind. Schema is intentionally permissive on the body fields — each kind owns its body shape (validated by the consuming code, not by this schema).",
+  "type": "object",
+  "required": ["kind", "description"],
+  "properties": {
+    "kind": {
+      "type": "string",
+      "enum": [
+        "eu_non_cooperative_jurisdictions",
+        "sfdr_v1_material_pais_data_centre",
+        "recognised_sustainability_standards",
+        "data_centre_sector_material_categories"
+      ]
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "last_verified": { "type": "string", "format": "date" },
+    "verification_note": { "type": "string" },
+    "source": { "type": "string" },
+    "source_url": { "type": "string" }
+  }
+}

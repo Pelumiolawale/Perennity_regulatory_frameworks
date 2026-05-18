@@ -44,6 +44,13 @@ export interface SharedCriterion {
   methodology_version_introduced: string;
   summary: string;
   successor_regime_note?: string;
+  // v0.5.0-alpha.2 (Phase 1, commit 1.2). Intra-framework dependencies
+  // (criterion_id list) and cross-framework dependencies (framework_id list).
+  // Both validated by criterion.schema.json. Used by the SFDR orchestrator
+  // to topologically sort criteria within a framework and to surface
+  // upstream FrameworkResults via LogicInput.framework_results.
+  depends_on?: string[];
+  depends_on_framework?: string[];
 }
 
 export interface CriterionRef {

@@ -31,12 +31,17 @@ import type { ProjectInput } from "./engine";
 
 export type { ProjectInput };
 
-// Minimal corporate-parent / fund-manager input. SFDR / UK SDR criteria
-// will read this in Phase 1. Field set will grow as Phase 1 scoring lands.
+// Corporate-parent / fund-manager input. SFDR / UK SDR criteria read this.
+// v0.5.0-alpha.2 adds optional `sfdr` nested fields consumed by SFDR Article 8
+// scoring (Phase 1, commit 1.2). Field set will keep growing as additional
+// regimes land.
+import type { EntitySFDRInputs } from "./sfdr/types";
+
 export interface EntityInput {
   entity_id: string;
   legal_name: string;
   jurisdiction: string;
+  sfdr?: EntitySFDRInputs;
 }
 
 // Minimal bond-level input. ICMA GBP criteria will read this in Phase 3.
