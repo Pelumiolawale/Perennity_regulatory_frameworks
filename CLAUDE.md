@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.4.0 (Phase 0 complete — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in Phase 1, ICMA GBP in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.4.1 (Phase 0 complete + Phase 1 commit 1.0 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, and the snapshot single-label filter). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in Phase 1, ICMA GBP in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -33,6 +33,7 @@ Flat single-package, NOT a monorepo:
 - `src/runtime.ts` — `DeterministicEngine` class + `aggregateVerdict` helper. `Engine.run` has two overloads (legacy `(ProjectInput, Activity[])` and broadened `(RunInput, AnyFramework[])`) since v0.4.0.
 - `src/renderers/snapshot.ts` — `SnapshotRenderer` (free tier)
 - `src/renderers/report.ts` — `ReportRenderer` (paid tier)
+- `src/renderers/filterCells.ts` — `filterCellsForSnapshot` + `SupportedLabel` (v0.4.1, single-label discipline). Pure post-engine-run filter consumed by the app's snapshot renderer (adoption scheduled for commit 1.5). Paid renderer deliberately does NOT call this.
 - `src/renderers/index.ts` — public renderer re-exports
 - `src/logic/` — per-criterion scoring functions: `sc_8_1_1`, `sc_8_1_2_pue_existing`, `sc_8_1_2_pue_measurement_compliance`, `dnsh_8_1_*`, `safeguards_*`, `minimum_safeguards_rollup`, `pue_performance_band`. Every criterion declares its input axes via `LogicFn<Axes>` since v0.4.0; all current criteria are `LogicFn<["project"]>`.
 - `src/logic/types.ts` — `LogicInput<Axes>` and `LogicFn<Axes>` generic over a tuple of input axis names; mapped type narrows the declared axes to required input slots, undeclared axes are type errors.
@@ -116,6 +117,34 @@ As of v0.3.0 the per-cell shape check is "required-subset + allowed-subset" (not
 `ReportOutput.pue_summary?: PUESummary` — focused subset of the PUE measurement compliance CriterionResult plus the declared intake values. Deliberately omits scoring internals (`scoring_logic_ref`, `observed_value`) to keep the surface tight for paid-PDF side-by-side render.
 
 `EngineRun.warnings?: string[]` (v0.4.0+) — non-fatal diagnostic warnings from the run. Populated when frameworks are skipped (currently when product_label or issuance_framework entries appear in the frameworks list — their scoring isn't implemented yet). Free-tier `SnapshotRenderer` does NOT propagate this field; it's a diagnostic surface for paid-tier debug pages and engine consumers. Omitted from `EngineRun` (not empty-array) when no warnings were generated, so canonical output of pure activity-aligned runs is unchanged from v0.3.0.
+
+## v0.4.1 — snapshot allowlist single-label discipline (Phase 1, commit 1.0)
+
+Patch release. No contract surface change: `Engine.run`, `SnapshotOutput`, and `HeatmapCell` shapes are unchanged from v0.4.0.
+
+New exported pure function (lives in `src/renderers/filterCells.ts`, re-exported from `@perennity/engine`):
+
+```ts
+filterCellsForSnapshot(
+  cells: HeatmapCell[],
+  targetLabel: SupportedLabel,
+): { cells: HeatmapCell[]; warnings: string[] }
+```
+
+`SupportedLabel` is a new exported string-literal union with seven members: `"eu_taxonomy_8_1" | "sfdr_article_8" | "sfdr_article_9" | "uk_sdr_focus" | "uk_sdr_improvers" | "uk_sdr_impact" | "uk_sdr_mixed_goals"`. The type was expected from Phase 0 per the framework archetype split but never landed in v0.4.0 — introducing it here rather than silently inlining the string literals. Tracked explicitly so future framework additions widen the type in one place.
+
+Scoping rules:
+- `targetLabel = "eu_taxonomy_8_1"` keeps cells where `archetype === "activity_aligned"` AND `framework ∈ {EU_TAXONOMY_CLIMATE, EU_TAXONOMY_ENVIRONMENTAL}`, plus the `minimum_safeguards` cell.
+- SFDR labels keep `archetype === "product_label"` AND `framework === "SFDR"`, drop `minimum_safeguards`.
+- UK SDR labels keep `archetype === "product_label"` AND `framework === "UK_SDR"`, drop `minimum_safeguards`.
+
+`minimum_safeguards` scoping: Article 18 of EU Regulation 2020/852 is an EU Taxonomy concept, so the safeguards cell is rendered only under EU Taxonomy labels. Identified by the typed discriminator `cell.framework === "minimum_safeguards"` (not by string-name on a separate field). Will be re-evaluated when ICMA GBP lands in Phase 3 (the GBP "alignment with Green Bond Principles" concept overlaps semantically but is structurally separate).
+
+Strict on unknown cells: any `HeatmapCell` with no `archetype` and `framework !== "minimum_safeguards"` is dropped from the rendered output AND pushes a structured warning onto the returned `warnings` array. Warnings flow through the function's return value (Option α from the spec) rather than `console.warn` (Option β) — structured warnings are testable.
+
+Renderer adoption: the engine's `SnapshotRenderer` does NOT call this filter yet — for v0.4.1 the function ships and is exported, and the consuming app continues to render the way it does today. The EU-Tax-only world means there's nothing to filter. App-side adoption is scheduled for commit 1.5 alongside the pin bump (consuming app target version: `@perennity/engine#v0.5.0`).
+
+Paid PDF deliberately bypasses this filter — the £85k report can and should show comparative analysis. Commit 1.4 will make that explicit at the call site.
 
 ## Authority labels
 
