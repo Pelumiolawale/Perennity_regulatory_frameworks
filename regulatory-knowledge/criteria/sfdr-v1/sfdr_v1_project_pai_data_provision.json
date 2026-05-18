@@ -1,0 +1,27 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "sfdr_v1_project_pai_data_provision",
+  "name": "Project-level PAI data provision (machine-readable, FMP-liftable)",
+  "regime": "sfdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "Commission Delegated Regulation (EU) 2022/1288",
+      "celex": "02022R1288-20230220",
+      "article": "Annex I Table 1 (mandatory PAI indicators)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02022R1288-20230220"
+    },
+    {
+      "regulation": "Regulation (EU) 2019/2088 (SFDR)",
+      "celex": "02019R2088-20240109",
+      "article": "Article 7 (product-level PAI disclosure)",
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02019R2088-20240109"
+    }
+  ],
+  "axes": ["project", "entity"],
+  "applies_to": ["sfdr_v1_article_9"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.4",
+  "summary": "Data-provision test, distinct from criterion 3 (entity-level Art 4 policy). For each of the 11 material PAIs, the project must provide actual measured value (operational) or credible projected value with methodology (pre-operational), measurement period, methodology reference, and where verified — verifier identity + assurance level. Verification gate: when criterion 3 (entity Art 4 policy) is partially_aligned or weaker, ≥9 of 11 PAIs must be third-party-verified; otherwise the band caps at partially_aligned. Component of criterion 9 evidence pack. Reads criterion 3 read-only — no cascade.",
+  "depends_on": ["sfdr_v1_pai_consideration_policy"],
+  "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), product-level PAI data provision is expected to be retained as a core test for the highest-tier category. PB Art 9 verdicts issued under methodology v3.4 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
+}

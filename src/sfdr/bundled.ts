@@ -10,15 +10,15 @@ import dnsh_assessment from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1
 import e_s_characteristics_promotion from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_e_s_characteristics_promotion.json";
 import good_governance_attestation from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_good_governance_attestation.json";
 import pai_consideration_policy from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_pai_consideration_policy.json";
-import pai_integration_evidence from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_pai_integration_evidence.json";
 import periodic_reporting_commitment from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_periodic_reporting_commitment.json";
 import pre_contractual_disclosure from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_pre_contractual_disclosure.json";
-import reference_benchmark_alignment from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_reference_benchmark_alignment.json";
-import sustainable_investment_floor from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_sustainable_investment_floor.json";
-import sustainable_investment_objective from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_sustainable_investment_objective.json";
+import project_pai_data_provision from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_project_pai_data_provision.json";
+import si_eligibility_evidence_pack from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_si_eligibility_evidence_pack.json";
+import si_objective_qualification from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_si_objective_qualification.json";
 import taxonomy_alignment_disclosure from "../../regulatory-knowledge/criteria/sfdr-v1/sfdr_v1_taxonomy_alignment_disclosure.json";
 
 const ALL = [
+  // Art 8 (7 criteria, v3.3 — unchanged)
   e_s_characteristics_promotion,
   good_governance_attestation,
   pai_consideration_policy,
@@ -26,10 +26,10 @@ const ALL = [
   pre_contractual_disclosure,
   taxonomy_alignment_disclosure,
   periodic_reporting_commitment,
-  sustainable_investment_objective,
-  sustainable_investment_floor,
-  pai_integration_evidence,
-  reference_benchmark_alignment,
+  // Art 9 (3 criteria, v3.4 — replaces the 4 v3.3 declarations)
+  si_objective_qualification,
+  si_eligibility_evidence_pack,
+  project_pai_data_provision,
 ] as unknown as SharedCriterion[];
 
 export const BUNDLED_SFDR_CRITERIA: ReadonlyMap<string, SharedCriterion> = new Map(

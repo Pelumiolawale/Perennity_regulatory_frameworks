@@ -57,20 +57,19 @@ async function makeTempLibrary(
 }
 
 describe("criterion library — schema validation", () => {
-  test("loads the real SFDR v1 criterion library (11 files)", async () => {
+  test("loads the real SFDR v1 criterion library (10 files — Art 8 + v3.4 Art 9)", async () => {
     const lib = await loadCriterionLibrary({ rootDir: REAL_KB });
-    assert.equal(lib.byId.size, 11);
-    // Spot-check a couple of canonical entries.
-    const floor = lib.byId.get("sfdr_v1_sustainable_investment_floor");
-    assert.ok(floor, "expected sfdr_v1_sustainable_investment_floor in library");
-    assert.equal(floor.regime, "sfdr_v1");
-    assert.deepEqual(floor.applies_to, ["sfdr_v1_article_9"]);
-    assert.ok(
-      floor.summary.includes("90%"),
-      "sustainable_investment_floor summary must reference the PB 90% threshold",
-    );
-    assert.equal(floor.scoring_status, "not_implemented");
-    assert.ok(floor.successor_regime_note?.includes("COM(2025) 841"));
+    // v0.5.0-alpha.4 / commit 1.3: criterion 11 (reference_benchmark) folded
+    // into c8 sub-case (b); the 90% floor reframed as methodology preamble.
+    // Final count: 7 Art 8 + 3 Art 9 = 10.
+    assert.equal(lib.byId.size, 10);
+    // Spot-check the load-bearing Art 9 c8 entry.
+    const c8 = lib.byId.get("sfdr_v1_si_objective_qualification");
+    assert.ok(c8, "expected sfdr_v1_si_objective_qualification in library");
+    assert.equal(c8.regime, "sfdr_v1");
+    assert.deepEqual(c8.applies_to, ["sfdr_v1_article_9"]);
+    assert.equal(c8.scoring_status, "implemented");
+    assert.ok(c8.successor_regime_note?.includes("COM(2025) 841"));
   });
 
   test("loads a well-formed temp criterion", async () => {
@@ -150,7 +149,7 @@ describe("criterion library — ref resolution", () => {
     assert.equal(result.resolved.length, 7);
   });
 
-  test("resolves SFDR Art 9 refs (11 refs, no errors)", async () => {
+  test("resolves SFDR Art 9 refs (10 refs, no errors — v3.4 reframe)", async () => {
     const lib = await loadCriterionLibrary({ rootDir: REAL_KB });
     const result = resolveCriterionRefs(
       Array.from(lib.byId.keys()).map((id) => ({ ref: id, weight: null })),
@@ -158,7 +157,7 @@ describe("criterion library — ref resolution", () => {
       { id: "sfdr_v1_article_9", framework_id: "sfdr_v1_article_9", regime: "sfdr_v1" },
     );
     assert.equal(result.errors.length, 0);
-    assert.equal(result.resolved.length, 11);
+    assert.equal(result.resolved.length, 10);
   });
 
   test("missing ref surfaces a missing error", async () => {
@@ -175,9 +174,9 @@ describe("criterion library — ref resolution", () => {
 
   test("applies_to mismatch surfaces an applies_to_mismatch error", async () => {
     const lib = await loadCriterionLibrary({ rootDir: REAL_KB });
-    // sustainable_investment_floor is Art 9 only; referencing it from Art 8 must fail.
+    // si_objective_qualification is Art 9 only; referencing it from Art 8 must fail.
     const result = resolveCriterionRefs(
-      [{ ref: "sfdr_v1_sustainable_investment_floor", weight: null }],
+      [{ ref: "sfdr_v1_si_objective_qualification", weight: null }],
       lib,
       { id: "sfdr_v1_article_8", framework_id: "sfdr_v1_article_8", regime: "sfdr_v1" },
     );

@@ -3,7 +3,7 @@
 // citations change. Imported by the renderer footers, the engine provenance
 // triple, the engagement-letter template generator, and the regulatory KB.
 
-export const METHODOLOGY_VERSION = "v3.3";
+export const METHODOLOGY_VERSION = "v3.4";
 export const METHODOLOGY_VINTAGE = "May 2026";
 export const METHODOLOGY_VERSION_FULL = `${METHODOLOGY_VERSION} — ${METHODOLOGY_VINTAGE}`;
 
@@ -181,11 +181,196 @@ export const METHODOLOGY_VERSION_FULL = `${METHODOLOGY_VERSION} — ${METHODOLOG
 // cells (the heatmap is the primary surface, not the aggregate).
 //
 // ----------------------------------------------------------------------------
-// Article 9 — still not_implemented in 1.2
+// Article 9 — see the v3.4 section below.
 // ----------------------------------------------------------------------------
 //
-// Article 9 ships in commit 1.3. The 90% sustainable investment floor (locked
-// in v3.3 — see the verbatim paragraph in src/lib/methodologyVersion.ts under
-// "v3.3 — SFDR Articles 8 and 9 declared") will be operationalised then.
-// Until 1.3, Art 9 frameworks emit 7 scored shared criteria + 4
-// not_implemented Art-9-only criteria and a diagnostic warning.
+// ============================================================================
+// v3.4 — Article 9 scoring (v0.5.0-alpha.4, Phase 1 commit 1.3)
+// ============================================================================
+//
+// v3.4 is a substantive methodology bump (not a patch on v3.3). Three framing
+// statements load the foundation; the per-criterion methodology follows.
+//
+// ----------------------------------------------------------------------------
+// Framing 1 — Art 9 reframe (load-bearing)
+// ----------------------------------------------------------------------------
+//
+// PB certifies Art 9 SI-eligibility at the project (asset) level. The project
+// is the asset that an FMP may place in an Art 9 fund; the developer entity
+// is the investee. FMP-level disclosure obligations — fund SI proportion
+// calculation, portfolio-level PAI integration, reference benchmark
+// designation — remain with the FMP. PB's certification answers the question:
+// is this project a credible SI-qualifying asset that an FMP could place in
+// their Art 9 fund without breaking SFDR? Where Art 9 mechanics are
+// intrinsically fund-level (Art 9(1) benchmark designation as a structural
+// fund choice; Art 9(3) fund-structural decisions), criteria evaluate
+// compatibility at project level where meaningful and return not_applicable
+// with rationale where not.
+//
+// ----------------------------------------------------------------------------
+// Framing 2 — the 90% as positioning principle
+// ----------------------------------------------------------------------------
+//
+// PB only certifies projects as Art 9 SI-eligible where SI characterisation
+// is unambiguous and where an FMP could defensibly attribute the vast
+// majority — operationally, ≥90% — of their investment in this project to
+// the SI proportion of their fund. This 90% threshold expresses PB's
+// positioning as the more conservative SPO, sitting above the converged
+// market median (~80%) and below the European Commission June 2022 Q&A's
+// literal reading of Art 2(17) SI definition (effectively 100%). It is a
+// positioning principle that informs the calibration of criteria 8 and 9
+// (raising the bar for `aligned` verdicts) but is NOT operationalised as a
+// per-criterion arithmetic threshold. The principle is necessary but not
+// sufficient — Art 2(17)'s DNSH and good-governance requirements must
+// independently pass via criteria 4 and 2 respectively.
+//
+// (This framing supersedes the v3.3 quantitative SI floor at criterion-level;
+// the 90% no longer functions as a numeric band gate. Verify by grep: no
+// 0.9 / 90 numeric threshold exists in src/sfdr/ for any Art 9 criterion.)
+//
+// ----------------------------------------------------------------------------
+// Framing 3 — site boundary
+// ----------------------------------------------------------------------------
+//
+// Default project scope is asset-level: a single data centre asset, or a
+// single site holding multiple buildings under common ownership. Where a
+// single SPV holds multiple buildings on a single site, PB treats the site
+// as one project; any single building's failure of DNSH (criterion 4) or
+// SI-objective contribution (criterion 8) drags the site-level verdict down.
+// Portfolio-level certification across multiple sites is available only
+// under explicit engagement scope and is verdict-aggregated across
+// constituent site-level results.
+//
+// ----------------------------------------------------------------------------
+// Criterion count statement
+// ----------------------------------------------------------------------------
+//
+// v3.4 ships 10 SFDR criteria — Art 8 (criteria 1–7, locked in v3.3) and
+// Art 9 (criteria 8, 9, 10). Earlier v3.3 declarations referenced a
+// criterion 11 (reference benchmark alignment); v3.4 folds benchmark
+// compatibility into criterion 8 condition 4 sub-case (b), removing the
+// standalone criterion. Where engagement scope explicitly anticipates Art
+// 9(1) benchmarked fund placement, the benchmark compatibility test runs
+// within criterion 8. The v3.3 criterion 9 ("sustainable_investment_floor")
+// is also removed as a standalone criterion — the 90% concept moved to the
+// methodology preamble per Framing 2.
+//
+// ----------------------------------------------------------------------------
+// Criterion 8 — sfdr_v1_si_objective_qualification (axes: project)
+// ----------------------------------------------------------------------------
+//
+// Anchors: SFDR Art 9(1)/(2)/(3); Art 2(17); Art 10(1)(a). Load-bearing
+// for Art 9 — the 90% positioning principle expresses itself here as the
+// calibration of the "dominant purpose" threshold for the aligned band.
+//
+// aligned:
+//   1. Named single environmental or social objective, mappable to one
+//      of the EU Taxonomy's six environmental objectives (Reg 2020/852
+//      Art 9) OR to a social objective recognised in the Commission's
+//      Feb 2022 draft Social Taxonomy report.
+//   2. Dominance test: the SI objective is the primary commercial
+//      rationale, evidenced by IM/board paper, project economics
+//      dependent on the SI contribution, and marketing leading with the
+//      SI objective rather than conventional commercial features.
+//   3. ≥3 quantified indicators from Art 2(17) examples OR L2 RTS Annex I
+//      Table 1 PAI indicators (NOT bespoke metrics). Each with baseline +
+//      target + methodology. For pre-operational projects, design-stage
+//      commitments with auditor-attested feasibility study acceptable.
+//   4. Enhanced evidence:
+//      Sub-case (a) — 9(3) carbon-reduction objectives: ≥1 of
+//        {SBTi-validated 1.5°C with net-zero, EU CTB/PAB alignment at
+//        project level, IEA NZE 2050 pathway compatibility}.
+//      Sub-case (b) — Benchmark-aligned engagements (Art 9(1) placement
+//        anticipated): activity exclusions cleared (typically EU CTB/PAB
+//        per Delegated Reg 2020/1818 Art 12) AND carbon intensity
+//        trajectory consistent with benchmark requirement (7% YoY for
+//        EU CTB, 10% YoY for EU PAB).
+//      Sub-case (b) defaults to not_applicable for engagements not
+//      anticipating benchmark-aligned placement.
+//
+// partially_aligned: named + mappable BUT one of {dominance fails;
+//   indicators bespoke or 1-2 only; sub-case (a) partial evidence}.
+//
+// not_aligned: no named objective OR not mappable OR sub-case (b) applies
+//   and fails on exclusions or trajectory.
+//
+// insufficient_evidence: no disclosure / IM / pre-contractual material.
+//
+// Output: band + rationale_text + evidence_refs. No numeric_value.
+// not_applicable_rationale populates when sub-case (b) defaults to N/A.
+//
+// ----------------------------------------------------------------------------
+// Criterion 9 — sfdr_v1_si_eligibility_evidence_pack
+// (axes: project + entity. Cascade rules LOAD-BEARING)
+// ----------------------------------------------------------------------------
+//
+// Anchors: Art 2(17) DNSH + good-governance gates; L2 RTS Annex II-V
+// pre-contractual templates. Evidence-pack quality test.
+//
+// Five required components:
+//   1. Contribution attestation (c8 result, auditor- or technical-advisor-
+//      reviewed)
+//   2. DNSH attestation (c4 result, packaged for FMP lift)
+//   3. Good-governance attestation (c2 result, packaged for FMP lift)
+//   4. PAI data file (c10 result, machine-readable form)
+//   5. Documentation completeness (dated, version-controlled, recency
+//      ≤12mo operational / ≤24mo design-stage)
+//
+// Cascade rules (load-bearing — Art 2(17) explicit gates):
+//   c8 not_aligned → c9 not_aligned
+//   c4 not_aligned → c9 not_aligned (DNSH)
+//   c2 not_aligned → c9 not_aligned (good governance)
+//
+// aligned: all 5 components aligned + auditor/advisor attestation on 1-3
+//   + recency met.
+// partially_aligned: all 5 present but ≥1 partial OR management-only
+//   attestation OR operational recency 12-18mo.
+// not_aligned: any component not_aligned OR PAI data file missing.
+// insufficient_evidence: pack incomplete (≥2 components missing).
+//
+// Output: band + rationale_text + evidence_refs. No numeric_value.
+//
+// ----------------------------------------------------------------------------
+// Criterion 10 — sfdr_v1_project_pai_data_provision
+// (axes: project + entity. Reads c3 read-only via verification gate)
+// ----------------------------------------------------------------------------
+//
+// Anchors: L2 RTS Annex I Table 1; SFDR Art 7. Data-provision test, NOT
+// policy integration. Distinct from criterion 3 (which tests entity-level
+// Art 4 policy).
+//
+// For each of the 11 material PAIs (1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 13 —
+// same set as criteria 3 and 4 via material_pais_data_centre.json), provide:
+//   actual or projected value, measurement period, methodology reference,
+//   and where verified — verifier name + assurance level.
+//
+// aligned: all 11 PAIs with values + methodology + recency ≤12mo +
+//   machine-readable. Verification gate: if c3 is aligned, no extra
+//   verification required. If c3 partially_aligned or weaker, ≥9 of 11
+//   PAIs must be third-party-verified (else caps at partially_aligned).
+//
+// partially_aligned: 8-10 PAIs OR recency 12-18mo OR not machine-readable
+//   OR c3 weak + <9 third-party-verified.
+//
+// not_aligned: <8 PAIs OR methodology references missing OR PAI 7 absent
+//   when project within 2km of a Key Biodiversity Area (hard fail).
+//
+// insufficient_evidence: no PAI data file at all.
+//
+// Output: band + rationale_text + evidence_refs + numeric_value (PAI
+// coverage count out of 11; populated even for not_aligned bands).
+//
+// Cross-criterion reads:
+//   - Reads c3 result for verification gate (read-only, NO cascade)
+//   - Component of c9 evidence pack (c9 reads c10's result)
+//
+// ----------------------------------------------------------------------------
+// Aggregate Art 9 verdict (deferred)
+// ----------------------------------------------------------------------------
+//
+// Weight calibration remains deferred. Framework JSON ships with
+// weight: null for every criterion ref and verdict_thresholds.aligned
+// /partially_aligned null. The aggregate Art 9 verdict logic will land in
+// a post-Phase-1 calibration commit. Until then, framework.overall_verdict
+// is "not_applicable" (calibration_pending) and the renderer surfaces
+// per-criterion cells — the heatmap is the primary surface.
