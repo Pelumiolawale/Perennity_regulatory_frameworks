@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.4.1 (Phase 0 complete + Phase 1 commit 1.0 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, and the snapshot single-label filter). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in Phase 1, ICMA GBP in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.4.2 (Phase 0 complete + Phase 1 commits 1.0 and 1.0.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, the snapshot single-label filter, and SFDR label version-stamping for SFDR 2.0 forward compatibility). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in Phase 1, ICMA GBP in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -145,6 +145,27 @@ Strict on unknown cells: any `HeatmapCell` with no `archetype` and `framework !=
 Renderer adoption: the engine's `SnapshotRenderer` does NOT call this filter yet — for v0.4.1 the function ships and is exported, and the consuming app continues to render the way it does today. The EU-Tax-only world means there's nothing to filter. App-side adoption is scheduled for commit 1.5 alongside the pin bump (consuming app target version: `@perennity/engine#v0.5.0`).
 
 Paid PDF deliberately bypasses this filter — the £85k report can and should show comparative analysis. Commit 1.4 will make that explicit at the call site.
+
+## v0.4.2 — SFDR label version-stamping (Phase 1, commit 1.0.1)
+
+Patch release. Mechanical rename of two `SupportedLabel` members, supersedes the SFDR label naming in v0.4.1:
+
+- `"sfdr_article_8"` → `"sfdr_v1_article_8"`
+- `"sfdr_article_9"` → `"sfdr_v1_article_9"`
+
+The other five labels (`eu_taxonomy_8_1`, `uk_sdr_focus`, `uk_sdr_improvers`, `uk_sdr_impact`, `uk_sdr_mixed_goals`) are unchanged.
+
+Rationale: Commission proposal COM(2025) 841 would repeal Delegated Regulation 2022/1288 and restructure SFDR Art 8/9 into a new category regime ("SFDR 2.0"). Adoption is 18–30 months out; current SFDR (Reg 2019/2088 as consolidated 09/01/2024) remains the operative regime. Building current SFDR support under v1-suffixed labels means (a) every Art 8/9 verdict is unambiguously stamped with regulatory regime on its face, (b) SFDR 2.0 categories — when supported — can be added as `_v2` siblings without retroactive relabelling, (c) no production reports are ever ambiguous about which regime they assessed against.
+
+**Convention going forward**: when a regulatory regime is in active rewrite (proposal tabled but not yet adopted), new labels under that regime carry a `_v1` suffix; siblings under the future regime will carry `_v2` etc. EU Taxonomy and UK SDR labels are not version-stamped — neither has a comparable rewrite proposal tabled (Activity 8.1 is stable under Delegated Regulation 2021/2139; FCA PS23/16 is finalised). Revisit per regime if and when a comparable rewrite surfaces.
+
+**Deferred concept-alignment (commit 1.1 owns the call)**: the strings `"sfdr_article_8"` / `"sfdr_article_9"` still appear in two adjacent-but-distinct concepts that this commit deliberately did NOT rename:
+- `ProductLabelFramework.label_id` (framework-internal identifier, used in Phase 0 test fixtures at `src/__tests__/phase_0_3_archetype.test.ts` and `src/knowledge/__tests__/load.test.ts`).
+- `Criterion.framework_applicability[]` (cross-framework applicability tags on EU Taxonomy 8.1 safeguards criteria, in `regulatory-knowledge/frameworks/eu_taxonomy_climate/eu_tax_climate_8_1.json`).
+
+Renaming either would either change a different concept's contract (label_id) or alter the EU 8.1 KB hash invariant (framework_applicability). Commit 1.1 introduces the first real SFDR framework JSON and is the right place to decide whether these adjacent concepts should align with `SupportedLabel`'s versioning convention.
+
+EU 8.1 knowledge_base_hash invariant (`sha256:b3daee…d43`) unchanged. `Engine.run`, `HeatmapCell`, and `SnapshotOutput` contracts unchanged. Defensible as a patch (vs. minor) because v0.4.1 was the introduction of `SupportedLabel` and no production consumer pins to it yet — the app stays on `#v0.4.0` until commit 1.5.
 
 ## Authority labels
 
