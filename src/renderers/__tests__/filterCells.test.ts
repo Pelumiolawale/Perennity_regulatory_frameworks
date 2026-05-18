@@ -78,7 +78,7 @@ describe("filterCellsForSnapshot — single-label discipline", () => {
     );
   });
 
-  test("targetLabel=sfdr_article_8 keeps only SFDR cells, drops minimum_safeguards", () => {
+  test("targetLabel=sfdr_v1_article_8 keeps only SFDR cells, drops minimum_safeguards", () => {
     const cells: HeatmapCell[] = [
       euTaxCell("pass"),
       sfdrCell("partial"),
@@ -86,7 +86,7 @@ describe("filterCellsForSnapshot — single-label discipline", () => {
       safeguardsCell(),
     ];
 
-    const result = filterCellsForSnapshot(cells, "sfdr_article_8");
+    const result = filterCellsForSnapshot(cells, "sfdr_v1_article_8");
 
     assert.equal(result.cells.length, 1);
     assert.equal(result.warnings.length, 0);
@@ -106,10 +106,10 @@ describe("filterCellsForSnapshot — single-label discipline", () => {
     );
   });
 
-  test("targetLabel=sfdr_article_9 behaves like sfdr_article_8 (no minimum_safeguards)", () => {
+  test("targetLabel=sfdr_v1_article_9 behaves like sfdr_v1_article_8 (no minimum_safeguards)", () => {
     const result = filterCellsForSnapshot(
       [sfdrCell("pass"), safeguardsCell()],
-      "sfdr_article_9",
+      "sfdr_v1_article_9",
     );
     assert.equal(result.cells.length, 1);
     assert.equal(result.cells[0].framework, "SFDR");
@@ -154,7 +154,7 @@ describe("filterCellsForSnapshot — single-label discipline", () => {
       verdict: "fail",
     };
 
-    const result = filterCellsForSnapshot([unknown], "sfdr_article_8");
+    const result = filterCellsForSnapshot([unknown], "sfdr_v1_article_8");
 
     assert.equal(result.cells.length, 0);
     assert.equal(result.warnings.length, 1);
@@ -169,7 +169,7 @@ describe("filterCellsForSnapshot — single-label discipline", () => {
   test("filter is pure: input array is not mutated", () => {
     const input: HeatmapCell[] = [euTaxCell(), sfdrCell(), safeguardsCell()];
     const snapshot = JSON.parse(JSON.stringify(input));
-    filterCellsForSnapshot(input, "sfdr_article_8");
+    filterCellsForSnapshot(input, "sfdr_v1_article_8");
     assert.deepEqual(input, snapshot);
   });
 });

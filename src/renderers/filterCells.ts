@@ -29,8 +29,8 @@ import type { Framework, HeatmapCell } from "../engine";
 // Adding it here rather than silently inlining the string literals.
 export type SupportedLabel =
   | "eu_taxonomy_8_1"
-  | "sfdr_article_8"
-  | "sfdr_article_9"
+  | "sfdr_v1_article_8"
+  | "sfdr_v1_article_9"
   | "uk_sdr_focus"
   | "uk_sdr_improvers"
   | "uk_sdr_impact"
@@ -46,8 +46,8 @@ const EU_TAX_LABELS: ReadonlySet<SupportedLabel> = new Set<SupportedLabel>([
 ]);
 
 const SFDR_LABELS: ReadonlySet<SupportedLabel> = new Set<SupportedLabel>([
-  "sfdr_article_8",
-  "sfdr_article_9",
+  "sfdr_v1_article_8",
+  "sfdr_v1_article_9",
 ]);
 
 const UK_SDR_LABELS: ReadonlySet<SupportedLabel> = new Set<SupportedLabel>([
