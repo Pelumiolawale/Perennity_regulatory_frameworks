@@ -4,8 +4,8 @@
 //
 // Seven deterministic scoring functions, one per Art 8 criterion. Each takes
 // the typed SFDRScoringContext and returns SFDRCriterionScore. Bands locked
-// upstream — see methodologyVersion.ts file-doc and the v0.5.0-alpha.2 CLAUDE.md
-// section for the verbatim band definitions and rationale.
+// upstream — see /methodology.md at the repo root for the verbatim band
+// definitions and rationale.
 // ============================================================================
 
 import type { SFDRScoringFn, SFDRScoringContext } from "./orchestration";

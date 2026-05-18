@@ -396,7 +396,8 @@ Don't drift these without updating the app side in lockstep.
 
 ## Methodology versioning
 
-- Methodology version is per-activity (e.g. v3.2). Surfaced via `METHODOLOGY_VERSION` constant in `src/lib/methodologyVersion.ts`.
+- Methodology version is per-activity (e.g. v3.4). Surfaced via the `METHODOLOGY_VERSION` constant in `src/lib/methodologyVersion.ts`.
+- **Canonical methodology documentation lives in `/methodology.md` at the repo root** (extracted from `methodologyVersion.ts` doc-comment after the v3.4 section pushed total comment length past 250 lines). When bumping the constant, append a new section to `methodology.md` in lockstep — historical sections are preserved so audit replay can reproduce the methodology in force at any past engagement.
 - When a framework instrument is amended, bump `framework_source_hash` and create a new activity definition with `supersedes` pointing to the old one.
 - Historical runs always replay against their original manifest's `knowledge_base_hash`.
 

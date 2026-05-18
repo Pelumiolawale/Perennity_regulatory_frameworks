@@ -85,10 +85,10 @@ export type {
   RegulatoryAnchor,
 } from "./knowledge/criterion-library";
 
-// --- SFDR scoring (v0.5.0-alpha.2, phase 1, commit 1.2) ---------------------
-// Article 8 fully scored; Article 9 criteria 8-11 still not_implemented
-// (commit 1.3). See methodologyVersion.ts for the locked band definitions
-// and src/sfdr/ for the scoring functions and orchestration.
+// --- SFDR scoring (v0.5.0-alpha.2+, phase 1, commits 1.2 / 1.3) -------------
+// Articles 8 and 9 fully scored under methodology v3.4. See /methodology.md
+// at the repo root for the locked band definitions and src/sfdr/ for the
+// scoring functions and orchestration.
 export {
   SFDR_REGISTRY,
   scoreSFDRCriteria,
