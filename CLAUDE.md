@@ -309,6 +309,28 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
 
+## v0.5.0-alpha.3 — EU non-cooperative jurisdictions list refresh (Phase 1, commit 1.2.1)
+
+Data-only refresh of `regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json` to the 17 February 2026 ECOFIN Annex I (Council document 5869/26, ECOFIN 132). The list had drifted two cycles behind (Feb 2024 → Oct 2025 → Feb 2026).
+
+**List delta vs. v0.5.0-alpha.2:**
+- Added: Russian Federation (renamed from "Russia"), Turks and Caicos Islands, Viet Nam
+- Removed: Antigua and Barbuda, Fiji, Samoa, Trinidad and Tobago
+- Unchanged: American Samoa, Anguilla, Guam, Palau, Panama, US Virgin Islands, Vanuatu
+- Final count: 10 jurisdictions
+
+Naming convention standardised to the official long forms used in ECOFIN documents (e.g. "Russian Federation", "Viet Nam") — these are the forms regulators, KYC vendors, and corporate structure disclosures use, so the match against developer-supplied jurisdiction strings is more reliable. "US Virgin Islands" stays in the Council document's short form (the doc itself uses that form).
+
+**Scope confirmation (recon before changing anything):**
+- Only consumer of `EU_NON_COOPERATIVE_JURISDICTIONS` in code: `src/sfdr/art8-scoring.ts` (criterion 2 Domain D, tax compliance screen). No other framework references this constant.
+- No test fixture hard-codes any of the renamed/removed jurisdiction strings — `grep` for `"Russia"`, `"Antigua and Barbuda"`, etc. found only the JSON and TS counterpart themselves.
+
+**Updated:**
+- `regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json` — `annex_i` array, `source`, `source_url`, `last_verified` (2026-02-17). `$schema`, `kind`, `description`, `verification_note` unchanged.
+- `src/sfdr/constants.ts` — `EU_NON_COOPERATIVE_JURISDICTIONS` Set + the header comment to reflect the new verification anchor.
+
+**No methodology change** (stays v3.3). **No engine logic change.** **No schema change.** EU 8.1 KB hash invariant (`sha256:b3daee…d43`) unaffected. TS↔JSON parity test green. All 186 tests still pass.
+
 ## Authority labels
 
 Defined in `src/renderers/report.ts:208-212` (`authorityLabel(level)`) and mirrored verbatim by the consuming app:
