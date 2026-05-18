@@ -13,20 +13,21 @@
 import type { SectorMaterialCategoryId } from "./types";
 
 // EU Council Annex I non-cooperative jurisdictions for tax purposes.
-// Last verified against ECOFIN Council Conclusions of 20 February 2024.
+// Last verified against ECOFIN Council Conclusions of 17 February 2026
+// (Council document 5869/26, ECOFIN 132). Names use the official long forms
+// from the Council document (e.g. "Russian Federation", "Viet Nam") to match
+// regulator / KYC vendor / corporate disclosure conventions.
 export const EU_NON_COOPERATIVE_JURISDICTIONS: ReadonlySet<string> = new Set([
   "American Samoa",
   "Anguilla",
-  "Antigua and Barbuda",
-  "Fiji",
   "Guam",
   "Palau",
   "Panama",
-  "Russia",
-  "Samoa",
-  "Trinidad and Tobago",
+  "Russian Federation",
+  "Turks and Caicos Islands",
   "US Virgin Islands",
   "Vanuatu",
+  "Viet Nam",
 ]);
 
 // 11 material PAIs for data-centre developer assessment under SFDR.
