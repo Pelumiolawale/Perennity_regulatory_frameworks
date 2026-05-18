@@ -46,6 +46,14 @@ export type {
   Severity,
 } from "./renderers";
 
+// --- Snapshot single-label filter (v0.4.1, phase 1, commit 1.0) -------------
+// Pure post-engine-run filter that narrows HeatmapCell[] to the user's
+// selected target label before snapshot rendering. See src/renderers/filterCells.ts
+// for the scoping rules. The paid Report renderer deliberately does NOT call
+// this filter — comparative output is the paid deliverable's job.
+export { filterCellsForSnapshot } from "./renderers/filterCells";
+export type { SupportedLabel, FilterCellsResult } from "./renderers/filterCells";
+
 // --- Knowledge-base loader --------------------------------------------------
 export {
   loadKnowledgeBase,

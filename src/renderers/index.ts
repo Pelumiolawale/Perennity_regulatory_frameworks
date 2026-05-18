@@ -7,3 +7,6 @@ export type {
 
 export { ReportRenderer } from "./report";
 export type { ReportRendererOptions } from "./report";
+
+export { filterCellsForSnapshot } from "./filterCells";
+export type { SupportedLabel, FilterCellsResult } from "./filterCells";
