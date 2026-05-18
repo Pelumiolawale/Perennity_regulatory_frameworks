@@ -1,0 +1,15 @@
+{
+  "$schema": "./constants.schema.json",
+  "kind": "recognised_sustainability_standards",
+  "description": "Sustainability reporting standards PB recognises as 'named framework' evidence for SFDR criterion 5 (pre-contractual disclosure, elements 4 and 6) and criterion 7 (periodic reporting). Used to discriminate between specific-named-framework content and generic ESG narrative.",
+  "standards": [
+    { "id": "gri", "name": "Global Reporting Initiative (GRI) Standards", "current_version": "2021 Universal + Topic Standards" },
+    { "id": "tcfd", "name": "Task Force on Climate-related Financial Disclosures (TCFD) Recommendations", "current_version": "2017 (consolidated into ISSB IFRS S2 from 2024)" },
+    { "id": "ifrs_s1", "name": "IFRS Sustainability Disclosure Standard S1 (General Requirements)", "current_version": "S1 2023" },
+    { "id": "ifrs_s2", "name": "IFRS Sustainability Disclosure Standard S2 (Climate-related Disclosures)", "current_version": "S2 2023" },
+    { "id": "efrag_esrs", "name": "European Sustainability Reporting Standards (EFRAG ESRS)", "current_version": "ESRS Set 1, 2023" },
+    { "id": "cdp", "name": "CDP (formerly Carbon Disclosure Project) Climate / Water / Forests questionnaires", "current_version": "2024 cycle" }
+  ],
+  "last_verified": "2026-05-18",
+  "verification_note": "The standards list is intentionally tight — adding a standard requires methodology-doc justification. Internal named frameworks (with version stamp) are also acceptable per the criterion 5/7 band text."
+}

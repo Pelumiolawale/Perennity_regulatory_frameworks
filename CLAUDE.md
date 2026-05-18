@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.1 (Phase 0 complete + Phase 1 commits 1.0, 1.0.1, and 1.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, and SFDR Articles 8 + 9 declared via the shared criterion library). EU Taxonomy 8.1 is the only framework with scoring logic today; SFDR scoring lands in commits 1.2 (Art 8) and 1.3 (Art 9), ICMA GBP in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.2 (Phase 0 complete + Phase 1 commits 1.0, 1.0.1, 1.1, and 1.2 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 declared, and SFDR Article 8 fully scored with deterministic five-band verdicts). SFDR Article 9 criteria 8-11 ship next in commit 1.3; ICMA GBP in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -233,6 +233,81 @@ Pre-release tag. The full `v0.5.0` lands at the end of Phase 1 (commit 1.4) once
 **Adjacent concept-alignment from v0.4.2** (deferred again): Phase 0 test fixtures still use `label_id: "sfdr_article_8"` in `ProductLabelFramework` constructors at `src/__tests__/phase_0_3_archetype.test.ts` and `src/knowledge/__tests__/load.test.ts`. The EU 8.1 KB JSON still has `framework_applicability: [..., "sfdr_article_9", ...]` in safeguards criteria. Renaming either would change a different concept's contract or break the KB hash invariant; both remain on the unversioned strings as deliberate design (KB hash stability) and tech-debt-with-rationale (test fixtures). Revisit when SFDR scoring lands (1.2/1.3) if the fixtures need refresh.
 
 **Pre-release vs. stable**: `v0.5.0-alpha.1` is a pre-release. The app's git-URL pin stays on `#v0.4.0` (or `#main` if it tracks); pre-release tags are NOT automatically picked up by npm semver ranges. Full `v0.5.0` ships when commit 1.4 lands snapshot phrases + PDF renderer changes for SFDR.
+
+## v0.5.0-alpha.2 — SFDR Article 8 scoring (Phase 1, commit 1.2)
+
+Pre-release continues. The full `v0.5.0` lands in commit 1.4. This commit converts SFDR Article 8 from declared-only (commit 1.1) to fully scored: 7 deterministic per-criterion functions producing five-band verdicts plus a sixth `not_applicable` band, with rationale text on every cell.
+
+**Structural additions (all additive, EU 8.1 KB hash unchanged):**
+
+- `HeatmapCell.verdict` union widened with the five SFDR bands (`aligned`, `partially_aligned`, `not_aligned`, `insufficient_evidence`) plus `not_applicable`. Activity-aligned cells continue to use the legacy `pass`/`partial`/`fail`/`data_missing` values; both render through the same renderer path.
+- `HeatmapCell` gains `rationale_text`, `evidence_refs`, `not_applicable_rationale`, and `numeric_value` (optional). All added to the structural-gate allowlist atomically; magic-marker and DISALLOWED_KEYS walks unchanged.
+- `CriterionResult` gains matching `rationale_text`, `not_applicable_rationale`, `numeric_value` (optional) for the engine→renderer plumbing.
+- `Verdict` widened with the SFDR band values so the runtime can carry them through.
+- `FrameworkResult.archetype` is the renderer's branch switch — already added in commit 1.1 — and now drives the per-criterion-cell emission path for product_label results.
+
+**Dependency support (additive on `criterion.schema.json` and `SharedCriterion`):**
+
+- `depends_on?: string[]` — intra-framework criterion dependencies. Used by SFDR criterion 5 (cascades from criterion 1 when criterion 1 is `not_aligned`) and criterion 7 (reads criterion 1's evidence_refs read-only for indicator-link check).
+- `depends_on_framework?: string[]` — cross-framework dependencies. Used by SFDR criterion 6 to read EU Taxonomy 8.1's `FrameworkResult` via `LogicInput.framework_results`. An adapter maps the legacy EU-Tax `Verdict` to SFDR band vocabulary inside the criterion 6 scoring function.
+- `topologicalSort` in `src/sfdr/orchestration.ts` orders criteria by `depends_on` and fails loudly on cycles or unresolved deps (loud-fail-at-load-time pattern).
+- `validateCrossFrameworkDeps` is the load-time check that every `depends_on_framework` is satisfiable.
+
+**Logic registry call:**
+
+The spec asked for `LogicFn<readonly LogicAxis[]>` widening. We tried it and surfaced a variance issue: widening `Axes` in `LogicFn` makes the type *harder* to call (the input becomes the *intersection* of all axis slots, requiring `project + entity + issuance` together). Reverted that widening and kept the EU registry narrow (`LogicFn<["project"]>`). SFDR scoring lives in a parallel dispatcher under `src/sfdr/` with its own typed `SFDRScoringFn` signature, which is cleaner anyway because SFDR has additional concerns (dependencies, cross-framework, typed band output) that aren't in the EU registry's contract. Documented under "Logic registry call" comment in `src/logic/registry.ts`.
+
+**Constants files (4 + 1 schema):**
+
+Under `regulatory-knowledge/constants/`:
+- `eu_non_cooperative_jurisdictions.json` — EU Council Annex I list. **Last verified 2024-02-20** against ECOFIN Council Conclusions. The list refreshes ~twice yearly (February and October); refresh `last_verified` on each verification.
+- `sfdr_v1_material_pais_data_centre.json` — 11 PAIs material for data-centre developers. Includes PB framing notes for PAI 3 (developer-as-investee) and PAI 6 (data-centre-as-high-impact).
+- `recognised_sustainability_standards.json` — 6 standards (GRI, TCFD, IFRS S1, IFRS S2, EFRAG ESRS, CDP) accepted as named-framework evidence for criteria 5 and 7.
+- `data_centre_sector_material_categories.json` — 4 categories (energy, water, biodiversity, community) used by criterion 1's sector-material gate.
+- `constants.schema.json` — small shared schema discriminated by `kind`.
+
+The TS mirror at `src/sfdr/constants.ts` is the runtime path; drift is caught by `src/sfdr/__tests__/constants-parity.test.ts`.
+
+**Per-criterion scoring (Article 8):**
+
+All 7 criteria implemented per the locked band definitions in `src/lib/methodologyVersion.ts` (file-level doc):
+1. `art8_c1_es_characteristics` — ≥3 quantified + ≥2 sector-material gates
+2. `art8_c2_good_governance` — 4-domain rubric (board / employees / remuneration / tax)
+3. `art8_c3_pai_policy` — material PAI coverage with numeric output (full count / 11)
+4. `art8_c4_dnsh` — per-PAI threshold screen, any harm = not_aligned
+5. `art8_c5_pre_contractual` — Annex II 9-element decomposition + cascade from c1
+6. `art8_c6_taxonomy` — cross-framework dep on EU Tax 8.1, numeric output, N/A when no claim
+7. `art8_c7_periodic_reporting` — operational vs pre-operational paths, reads c1 read-only
+
+**Engine integration:**
+
+- The runtime's product_label scoring path now invokes the SFDR orchestrator (via `scoreSFDRCriteria` + `SFDR_REGISTRY` + `BUNDLED_SFDR_CRITERIA`) rather than emitting placeholder `data_missing` cells.
+- Activity-aligned framework_results are passed to the orchestrator's `framework_results` map keyed by `framework.id`, so SFDR criterion 6 finds `eu_tax_climate_8_1`.
+- Art 8 frameworks no longer emit the "scoring not yet implemented" warning. Art 9 still does, naming the 4 still-pending criteria.
+- `synthesizeGaps` now skips the four SFDR band verdicts (`aligned`/`partially_aligned`/`not_aligned`/`insufficient_evidence`) — SFDR cells carry their own per-cell `rationale_text`, and gap-list narrative is anchored to EU-Tax-style verdicts. SFDR remediation surfaces in the renderer-level band-aware "what's missing" panel scheduled for commit 1.4.
+
+**Aggregate Article 8 verdict NOT computed.** Weights stay `null`; framework `overall_verdict` is `not_applicable` until the calibration commit (post-Phase-1).
+
+**`filterCellsForSnapshot` handles `not_applicable`** the same way it handled `not_implemented` in commit 1.1 — surfaced (visible to user as "Not applicable" with rationale), no warning emitted.
+
+**Input shape extensions (additive on Phase 0 contracts):**
+
+- `EntityInput.sfdr?: EntitySFDRInputs` carrying `governance`, `pai_disclosures`, `disclosures`, `reporting` typed sub-shapes.
+- `ProjectInput.sfdr?: ProjectSFDRInputs` carrying `disclosures`, `dnsh`, `taxonomy_claim`.
+- All sub-shapes optional — scoring functions resolve to `insufficient_evidence` when the relevant field is undefined, and to `not_applicable` for criterion 6 when no taxonomy claim is made (the absence is the signal).
+
+**Test coverage:**
+
+- 29 new tests across 3 new suites: per-criterion bands (10 tests across criteria 1-7), orchestration (topological sort + cycle detection + cross-framework validation), constants parity (TS ↔ JSON).
+- All 153 baseline tests still pass — **total 186/186**.
+- Structural gate test green; EU 8.1 KB hash invariant green.
+
+**Open items (deliberately deferred):**
+
+- **Weight calibration** — `weight: null` everywhere; aggregate verdict logic ships post-Phase-1 in a calibration commit.
+- **SFDR phrase table** for snapshot — `SNAPSHOT_PHRASES` has no SFDR entries yet; the renderer's gap_list path skips SFDR verdicts in 1.2. Phrase table additions ship in commit 1.4.
+- **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
+- **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
 
 ## Authority labels
 

@@ -22,5 +22,6 @@
   "scoring_status": "not_implemented",
   "methodology_version_introduced": "v3.3",
   "summary": "Tests whether the developer-entity has committed to and operationalised the SFDR Article 11 periodic reporting obligation: annual disclosure of the extent to which the promoted E/S characteristic (Art 8) or sustainable investment objective (Art 9) has been attained, against the disclosed pre-contractual template.",
+  "depends_on": ["sfdr_v1_e_s_characteristics_promotion"],
   "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), periodic reporting is expected to be retained and harmonised across the new category labels. PB Art 8/Art 9 verdicts issued under methodology v3.3 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
 }

@@ -14,6 +14,13 @@ import { safeguards_taxation } from "./safeguards_taxation";
 import { safeguards_fair_competition } from "./safeguards_fair_competition";
 import { minimum_safeguards_rollup } from "./minimum_safeguards_rollup";
 
+// EU-Taxonomy registry — entries are LogicFn<["project"]>. SFDR (Phase 1
+// commit 1.2) ships a parallel multi-axis dispatcher under src/sfdr/ rather
+// than widening this registry's typing. Widening Axes is variance-hostile
+// (a wider Axes tuple makes the function harder to call, not easier) and
+// the SFDR scoring path has different concerns anyway: cross-criterion
+// dependencies, cross-framework dependencies, typed band output. Keeping
+// the EU registry narrow preserves type safety for the v3.2 criteria.
 const registry: ReadonlyMap<string, LogicFn<["project"]>> = new Map<string, LogicFn<["project"]>>([
   ["logic.sc_8_1_1.v2", sc_8_1_1],
   // logic.sc_8_1_2.v1 retained for backward-compat with any v3.1-stamped

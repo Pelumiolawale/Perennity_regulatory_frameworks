@@ -72,6 +72,18 @@
     "successor_regime_note": {
       "type": "string",
       "description": "Optional free-text note flagging a pending regulatory rewrite affecting this criterion (e.g. SFDR 2.0 proposal COM(2025) 841)."
+    },
+    "depends_on": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z]+_v\\d+_[a-z][a-z0-9_]*$" },
+      "uniqueItems": true,
+      "description": "Intra-framework dependencies: criterion_id list of criteria that MUST be scored before this one. The engine sorts by topological order and exposes scored dependents to this criterion's logic function via LogicInput.dependencies. Added in v0.5.0-alpha.2 (Phase 1, commit 1.2). Cycles fail at framework-load time."
+    },
+    "depends_on_framework": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "description": "Inter-framework dependencies: framework_id list of frameworks that MUST be scored before this criterion's parent framework. Added in v0.5.0-alpha.2 (Phase 1, commit 1.2). Used by SFDR criterion 6 (taxonomy_alignment_disclosure) to read EU Taxonomy 8.1's verdict."
     }
   },
   "$defs": {

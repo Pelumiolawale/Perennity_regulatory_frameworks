@@ -22,5 +22,6 @@
   "scoring_status": "not_implemented",
   "methodology_version_introduced": "v3.3",
   "summary": "Tests whether the project documents the proportion of investment that is EU-Taxonomy-aligned, with explicit numbers (a disclosed 0% is acceptable — it is the disclosure that is mandatory, not a minimum alignment). Article 9 products often (but are not required to) report higher Taxonomy-aligned proportions; PB scoring does not impose a minimum here, only requires a defensible disclosed number.",
+  "depends_on_framework": ["eu_tax_climate_8_1"],
   "successor_regime_note": "Under proposed SFDR 2.0 (Commission proposal COM(2025) 841, tabled 2025), the SFDR / Taxonomy disclosure interface is expected to be tightened to avoid double-counting between the two regimes. PB Art 8/Art 9 verdicts issued under methodology v3.3 are stamped to SFDR v1 (Reg 2019/2088 as consolidated 09/01/2024) and remain valid as of date of issue."
 }

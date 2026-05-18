@@ -20,9 +20,11 @@ import type {
   AnyFramework,
   ProductLabelFramework,
 } from "./framework";
-import type { RunInput } from "./inputs";
+import type { EntityInput, RunInput } from "./inputs";
 import { getLogic } from "./logic/registry";
 import type { LogicInput } from "./logic/types";
+import { scoreSFDRCriteria, SFDR_REGISTRY } from "./sfdr";
+import { BUNDLED_SFDR_CRITERIA } from "./sfdr/bundled";
 
 export interface EngineDeps {
   engine_commit_sha: string;
@@ -95,8 +97,17 @@ export class DeterministicEngine implements Engine {
       }
     }
     const activity_results = activities.map((a) => this.scoreActivity(a, projectInput));
+    // Make activity-aligned framework_results available to SFDR criteria via
+    // cross-framework dependency lookup. Keyed by framework.id so SFDR
+    // criterion 6 can look up "eu_tax_climate_8_1".
+    const fwResultsById = new Map<string, FrameworkResult>();
+    for (let i = 0; i < activities.length; i++) {
+      fwResultsById.set(activities[i].id, activity_results[i]);
+    }
+    const entityInput =
+      "project" in input && !("project_id" in input) ? input.entity : undefined;
     const product_label_results = productLabelV3_3.map((p) =>
-      this.declareProductLabel(p, warnings),
+      this.scoreProductLabel(p, projectInput, entityInput, fwResultsById, warnings),
     );
     const framework_results = [...activity_results, ...product_label_results];
     return {
@@ -112,29 +123,45 @@ export class DeterministicEngine implements Engine {
     };
   }
 
-  // Construct a FrameworkResult for a v3.3 product_label framework whose
-  // scoring is declared-only (Phase 1 commit 1.1 state). Emits one synthetic
-  // CriterionResult per ref with scoring_status="not_implemented" and
-  // verdict="data_missing" as a neutral placeholder. The downstream snapshot
-  // renderer detects scoring_status and surfaces "Pending implementation"
-  // cells instead of treating data_missing as a user-missing-input signal.
-  private declareProductLabel(
+  // v0.5.0-alpha.2 (Phase 1, commit 1.2): score a v3.3 product_label framework
+  // through the SFDR orchestrator. Resolves criterion refs against the bundled
+  // SFDR criterion library, dispatches by criterion_id, emits CriterionResults
+  // carrying SFDR band verdicts + rationale + evidence_refs + numeric_value
+  // where applicable. Criteria with no registered scoring function (Art 9
+  // criteria 8-11 in this commit) fall through to not_implemented.
+  //
+  // The fwResultsById map carries upstream activity-aligned FrameworkResults
+  // for cross-framework dependency lookup (SFDR criterion 6 reads EU Tax 8.1).
+  private scoreProductLabel(
     framework: ProductLabelFramework,
+    projectInput: ProjectInput,
+    entityInput: EntityInput | undefined,
+    fwResultsById: ReadonlyMap<string, FrameworkResult>,
     warnings: string[],
   ): FrameworkResult {
     const refs = framework.criteria ?? [];
-    const sc_results: CriterionResult[] = refs.map((r) => ({
-      criterion_id: r.ref,
-      verdict: "data_missing" as const,
-      gap_summary: "",
-      evidence_refs: [],
-      scoring_logic_ref: "not_implemented",
-      scoring_logic_version: "n/a",
-      scoring_status: "not_implemented" as const,
-    }));
-    warnings.push(
-      `Framework "${framework.id}" (${framework.framework}) is declared with ${refs.length} criterion ref(s) but scoring is not yet implemented (Phase 1, commit 1.1). Full Art 8 scoring lands in commit 1.2, Art 9 in commit 1.3. Cells will render as "Pending implementation".`,
-    );
+    const criteria = refs
+      .map((r) => BUNDLED_SFDR_CRITERIA.get(r.ref))
+      .filter((c): c is NonNullable<typeof c> => c !== undefined);
+    if (criteria.length !== refs.length) {
+      warnings.push(
+        `Framework "${framework.id}": ${refs.length - criteria.length} criterion ref(s) could not be resolved against the bundled SFDR library and were dropped from scoring.`,
+      );
+    }
+    const sc_results = scoreSFDRCriteria(criteria, SFDR_REGISTRY, {
+      project: projectInput,
+      entity: entityInput,
+      framework_results: fwResultsById,
+    });
+    // Warn if any criterion is still not_implemented (Art 9 criteria
+    // 8-11 today). Art 8 frameworks no longer emit this warning since
+    // commit 1.2 ships full scoring for them.
+    const stillPending = sc_results.filter((r) => r.scoring_status === "not_implemented");
+    if (stillPending.length > 0) {
+      warnings.push(
+        `Framework "${framework.id}" has ${stillPending.length} criterion(criteria) without scoring logic yet (${stillPending.map((r) => r.criterion_id).join(", ")}). These cells will render as "Pending implementation". Article 9 scoring lands in commit 1.3.`,
+      );
+    }
     return {
       framework: framework.framework,
       framework_version: framework.framework_version,
@@ -349,6 +376,20 @@ function synthesizeGaps(results: FrameworkResult[]): GapItem[] {
       // would otherwise dominate the gap list under SFDR labels with
       // non-actionable noise.
       if (r.scoring_status === "not_implemented") continue;
+      // v0.5.0-alpha.2 (Phase 1, commit 1.2): SFDR cells carry their own
+      // rationale_text per cell — they do NOT surface in the EU-Tax-style
+      // gap_list. The gap list narrative is anchored to EU Tax-style
+      // verdicts; SFDR remediation surfaces in the renderer-level
+      // band-aware "what's missing" panel (lands in commit 1.4 with the
+      // PDF renderer). Skip all SFDR band verdicts here for 1.2.
+      if (
+        r.verdict === "aligned" ||
+        r.verdict === "partially_aligned" ||
+        r.verdict === "not_aligned" ||
+        r.verdict === "insufficient_evidence"
+      ) {
+        continue;
+      }
       gaps.push({
         gap_id: `${fr.activity_id}.${r.criterion_id}`,
         framework: fr.framework,

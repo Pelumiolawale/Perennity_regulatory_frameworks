@@ -150,6 +150,11 @@ export interface ProjectInput {
   build_completion_year?: number;
   data_points: Record<string, unknown>; // keyed by criterion data_input.field
   evidence_documents: EvidenceReference[];
+  // v0.5.0-alpha.2: optional typed SFDR project-level inputs consumed by
+  // SFDR Article 8 scoring (criterion 1 disclosures, criterion 4 DNSH
+  // evidence, criterion 6 taxonomy claim). Additive — existing EU Tax 8.1
+  // assessments do not set this field.
+  sfdr?: import("./sfdr/types").ProjectSFDRInputs;
 }
 
 export interface EvidenceReference {
@@ -171,7 +176,14 @@ export type Verdict =
   | "not_applicable"
   | "data_missing"
   | "banded"
-  | "deprecated";
+  | "deprecated"
+  // v0.5.0-alpha.2 additions (Phase 1, commit 1.2): SFDR five-band verdicts.
+  // CriterionResult.verdict for SFDR criteria uses these values. The legacy
+  // Verdict members above remain for activity-aligned (EU Tax 8.1) scoring.
+  | "aligned"
+  | "partially_aligned"
+  | "not_aligned"
+  | "insufficient_evidence";
 
 export interface CriterionResult {
   criterion_id: string;
@@ -202,6 +214,13 @@ export interface CriterionResult {
   // Renderers use this to surface "Pending implementation" cells rather
   // than treating verdict="data_missing" as a user-missing-input signal.
   scoring_status?: "not_implemented";
+
+  // v0.5.0-alpha.2 additions (Phase 1, commit 1.2): SFDR scoring payload
+  // for product_label criteria. Populated by scoring functions; surfaced
+  // on the corresponding HeatmapCell by the renderer.
+  rationale_text?: string;
+  not_applicable_rationale?: string;
+  numeric_value?: { value: number; unit: string; label: string };
 }
 
 export interface FrameworkResult {
@@ -315,7 +334,21 @@ export interface SnapshotOutput {
 
 export interface HeatmapCell {
   framework: Framework | "minimum_safeguards";
-  verdict: "pass" | "partial" | "fail" | "data_missing";
+  // v0.5.0-alpha.2 (Phase 1, commit 1.2): verdict union widened with the
+  // five SFDR bands plus "not_applicable" as a sixth band. Activity-aligned
+  // EU 8.1 continues to use the legacy "pass"/"partial"/"fail"/"data_missing"
+  // values; SFDR cells use the new band names. Both render distinctly via
+  // the snapshot renderer.
+  verdict:
+    | "pass"
+    | "partial"
+    | "fail"
+    | "data_missing"
+    | "aligned"
+    | "partially_aligned"
+    | "not_aligned"
+    | "insufficient_evidence"
+    | "not_applicable";
   authority_level?: 1 | 2 | 3;
   pillar_verdicts?: PillarVerdict[];
   // Discriminator naming the archetype this cell represents. Populated for
@@ -325,17 +358,22 @@ export interface HeatmapCell {
   // archetype. Allowlisted in src/renderers/__tests__/snapshot.gate.test.ts.
   archetype?: FrameworkArchetype;
   // v0.5.0-alpha.1 additions (Phase 1, commit 1.1).
-  // criterion_id: when present, the cell represents a single criterion of a
-  // framework (used by product_label frameworks where the heatmap surfaces
-  // per-criterion status). When absent, the cell represents an aggregated
-  // framework verdict (the existing activity_aligned EU 8.1 behaviour).
   criterion_id?: string;
-  // scoring_status: "not_implemented" marks a cell as declared-but-not-scored.
-  // The renderer reads this to display "Pending implementation" instead of
-  // collapsing verdict="data_missing" to "your data is missing." Allowlisted
-  // in snapshot.gate.test.ts. Not investor-grade content — purely a status
-  // discriminator.
   scoring_status?: "not_implemented";
+  // v0.5.0-alpha.2 additions (Phase 1, commit 1.2). All rationale-bearing
+  // fields. Status discriminators and per-cell explanatory text; populated
+  // on scored SFDR cells. Allowlisted in snapshot.gate.test.ts.
+  // rationale_text: 1-3 sentence explanation of the verdict.
+  // evidence_refs: IDs of evidence sources referenced (developer-provided
+  //   docs, public disclosures, third-party databases).
+  // not_applicable_rationale: populated ONLY when verdict === "not_applicable".
+  // numeric_value: structured numeric output for criteria where the verdict
+  //   carries a quantitative score (criterion 3 PAI coverage, criterion 6
+  //   claimed Taxonomy percentage).
+  rationale_text?: string;
+  evidence_refs?: string[];
+  not_applicable_rationale?: string;
+  numeric_value?: { value: number; unit: string; label: string };
 }
 
 export interface PillarVerdict {

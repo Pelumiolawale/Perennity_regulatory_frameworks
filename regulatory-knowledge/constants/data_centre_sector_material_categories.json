@@ -1,0 +1,13 @@
+{
+  "$schema": "./constants.schema.json",
+  "kind": "data_centre_sector_material_categories",
+  "description": "Sector-material E/S characteristic categories for data-centre projects. Used by SFDR criterion 1 (E/S characteristics promotion) to discriminate sector-material from generic. The 'aligned' band requires ≥2 of the ≥3 disclosed characteristics to fall into this category set.",
+  "categories": [
+    { "id": "energy_efficiency", "name": "Energy efficiency", "examples": ["PUE / WUE targets", "Renewable PPA coverage", "On-site renewable generation"] },
+    { "id": "water_stewardship", "name": "Water stewardship", "examples": ["WUE within CNDCP threshold", "Closed-loop cooling", "Water reuse"] },
+    { "id": "land_use_biodiversity", "name": "Land use / biodiversity", "examples": ["EIA-documented siting", "Net-positive biodiversity commitment", "Buffer-zone respect"] },
+    { "id": "community_local_impact", "name": "Community / local impact", "examples": ["Local employment commitment", "Heat reuse / district heating", "Community engagement framework"] }
+  ],
+  "extensible": true,
+  "extensibility_note": "Adding a category requires a methodology-doc entry justifying the data-centre materiality, with a citation to either a recognised standard or a regulatory anchor. Extending this list per-sector (e.g. for renewables, transport) happens in future regime-scoped constants files (e.g. renewables_sector_material_categories.json)."
+}

@@ -70,7 +70,24 @@ const ALLOWED_HEATMAP_CELL_KEYS = [
   // status discriminators — so their addition does not relax the gate.
   "criterion_id",
   "scoring_status",
+  // Added in v0.5.0-alpha.2 (Phase 1, commit 1.2). SFDR-scored cells carry
+  // per-criterion rationale, evidence references, an N/A rationale string
+  // (only populated when band = not_applicable), and an optional numeric
+  // value for quantitative criteria (PAI coverage / Taxonomy percentage).
+  // rationale_text and not_applicable_rationale are intentionally surfaced
+  // to free-tier users — they explain the verdict in plain language without
+  // quoting verbatim regulation or revealing PB-internal thresholds.
+  // numeric_value is composed of {value, unit, label}; thresholds and the
+  // PB-corroborated percentage are NOT included (they remain paid-tier).
+  "rationale_text",
+  "evidence_refs",
+  "not_applicable_rationale",
+  "numeric_value",
 ];
+
+// Per-cell `numeric_value` shape is `{value, unit, label}`. Keys allowlisted
+// to keep the deep-walk DISALLOWED_KEYS check from tripping on nested objects.
+const ALLOWED_NUMERIC_VALUE_KEYS = ["value", "unit", "label"];
 const ALLOWED_PILLAR_VERDICT_KEYS = ["pillar_id", "verdict"];
 const EXPECTED_SNAPSHOT_GAP_KEYS = ["gap_id", "one_sentence_description"];
 

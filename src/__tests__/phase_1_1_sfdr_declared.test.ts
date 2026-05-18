@@ -53,8 +53,8 @@ async function loadSfdrFrameworks(): Promise<{
   return { art8, art9 };
 }
 
-describe("Engine.run with SFDR Art 8 framework", () => {
-  test("produces 7 not_implemented cells (via snapshot) + warning, does not throw", async () => {
+describe("Engine.run with SFDR Art 8 framework (v0.5.0-alpha.2 — Art 8 now scored)", () => {
+  test("produces 7 scored cells (no scoring_status); no Art-8-specific warning", async () => {
     const { art8 } = await loadSfdrFrameworks();
     const engine = makeEngine();
     const run = await engine.run({ project: MINIMAL_PROJECT }, [art8]);
@@ -65,17 +65,43 @@ describe("Engine.run with SFDR Art 8 framework", () => {
     assert.equal(fr.framework, "SFDR");
     assert.equal(fr.activity_id, "sfdr_v1_article_8");
     assert.equal(fr.sc_results.length, 7);
+    // Art 8 is fully scored as of commit 1.2 — none of these results should
+    // carry scoring_status="not_implemented".
     for (const r of fr.sc_results) {
-      assert.equal(r.scoring_status, "not_implemented");
-      assert.equal(r.verdict, "data_missing");
+      assert.notEqual(
+        r.scoring_status,
+        "not_implemented",
+        `criterion ${r.criterion_id} should be scored, not pending`,
+      );
+      assert.ok(r.rationale_text, `criterion ${r.criterion_id} should carry rationale_text`);
     }
 
-    assert.ok(run.warnings && run.warnings.length > 0);
-    assert.match(run.warnings[0], /sfdr_v1_article_8/);
-    assert.match(run.warnings[0], /not yet implemented/i);
+    // With MINIMAL_PROJECT carrying no SFDR inputs, criteria with required
+    // entity/project data resolve to insufficient_evidence; criterion 6
+    // (taxonomy_alignment_disclosure) resolves to not_applicable because no
+    // Taxonomy claim is made (the absence is the signal).
+    for (const r of fr.sc_results) {
+      if (r.criterion_id === "sfdr_v1_taxonomy_alignment_disclosure") {
+        assert.equal(r.verdict, "not_applicable");
+        assert.ok(r.not_applicable_rationale);
+      } else {
+        assert.equal(r.verdict, "insufficient_evidence");
+      }
+    }
 
-    // Render through snapshot — expect 7 cells, all carrying scoring_status
-    // and criterion_id.
+    // No warning specific to Art 8 not being implemented — that message was
+    // removed in 1.2 since Art 8 now scores.
+    if (run.warnings) {
+      for (const w of run.warnings) {
+        if (w.includes("sfdr_v1_article_8")) {
+          assert.fail(
+            `expected no Art 8 "not implemented" warning in commit 1.2; got: ${w}`,
+          );
+        }
+      }
+    }
+
+    // Render through snapshot — expect 7 cells with band verdicts.
     const renderer = new SnapshotRenderer({
       disclaimer: "Article 26 disclaimer text.",
       now: () => "2026-05-18T00:00:00Z",
@@ -85,26 +111,38 @@ describe("Engine.run with SFDR Art 8 framework", () => {
     assert.equal(sfdrCells.length, 7);
     for (const c of sfdrCells) {
       assert.equal(c.archetype, "product_label");
-      assert.equal(c.scoring_status, "not_implemented");
+      assert.equal(c.scoring_status, undefined);
       assert.ok(c.criterion_id?.startsWith("sfdr_v1_"));
+      assert.ok(c.rationale_text);
     }
 
-    // Gap list must NOT be filled with non-actionable not_implemented entries.
+    // Gap list must NOT be filled with insufficient_evidence cells (they're
+    // not actionable EU-Tax-style gaps).
     assert.equal(snapshot.gap_list.length, 0);
   });
 });
 
-describe("Engine.run with SFDR Art 9 framework", () => {
-  test("produces 11 not_implemented cells (via snapshot) + warning", async () => {
+describe("Engine.run with SFDR Art 9 framework (still not_implemented in 1.2)", () => {
+  test("produces 11 cells — 7 scored shared + 4 still not_implemented; warning naming the framework", async () => {
     const { art9 } = await loadSfdrFrameworks();
     const engine = makeEngine();
     const run = await engine.run({ project: MINIMAL_PROJECT }, [art9]);
 
     assert.equal(run.framework_results.length, 1);
-    assert.equal(run.framework_results[0].sc_results.length, 11);
+    const fr = run.framework_results[0];
+    assert.equal(fr.sc_results.length, 11);
+
+    // Mix: 7 shared-with-Art-8 criteria now scored; 4 Art-9-only criteria
+    // still not_implemented (Phase 1 commit 1.3 implements them).
+    const pending = fr.sc_results.filter((r) => r.scoring_status === "not_implemented");
+    const scored = fr.sc_results.filter((r) => r.scoring_status !== "not_implemented");
+    assert.equal(pending.length, 4, "Art-9-only criteria should still be not_implemented");
+    assert.equal(scored.length, 7, "shared criteria should be scored under 1.2");
 
     assert.ok(run.warnings && run.warnings.length > 0);
-    assert.match(run.warnings[0], /sfdr_v1_article_9/);
+    const art9Warning = run.warnings.find((w) => w.includes("sfdr_v1_article_9"));
+    assert.ok(art9Warning, "expected a warning naming the Art 9 framework");
+    assert.match(art9Warning!, /commit 1\.3/);
 
     const renderer = new SnapshotRenderer({
       disclaimer: "Article 26 disclaimer text.",
@@ -114,16 +152,18 @@ describe("Engine.run with SFDR Art 9 framework", () => {
     const sfdrCells = snapshot.heatmap.filter((c) => c.framework === "SFDR");
     assert.equal(sfdrCells.length, 11);
 
-    // The 90% floor criterion must surface as a distinct cell with its id.
+    // The 90% floor criterion must surface as a distinct cell with its id,
+    // and remain not_implemented at commit 1.2.
     const floor = sfdrCells.find(
       (c) => c.criterion_id === "sfdr_v1_sustainable_investment_floor",
     );
     assert.ok(floor, "sustainable_investment_floor cell must surface in Art 9 snapshot");
+    assert.equal(floor.scoring_status, "not_implemented");
   });
 });
 
 describe("Engine.run with EU 8.1 + SFDR Art 8 together", () => {
-  test("EU 8.1 scores normally; SFDR cells render as not_implemented", async () => {
+  test("EU 8.1 scores normally; SFDR Art 8 cells render with scored bands", async () => {
     const { art8 } = await loadSfdrFrameworks();
     const engine = makeEngine();
     const frameworks: AnyFramework[] = [...BUNDLED_ACTIVITIES, art8];
@@ -140,8 +180,11 @@ describe("Engine.run with EU 8.1 + SFDR Art 8 together", () => {
     assert.equal(euResult.archetype, undefined); // unchanged for activity-aligned
     assert.equal(sfdrResult.archetype, "product_label");
 
-    // The runtime should have produced a warning naming the SFDR framework.
-    assert.ok(run.warnings && run.warnings.length > 0);
+    // Art 8 is fully scored — no Art-8-specific "not implemented" warning.
+    if (run.warnings) {
+      const art8warn = run.warnings.find((w) => w.includes("sfdr_v1_article_8"));
+      assert.equal(art8warn, undefined, "no Art 8 not-implemented warning expected in 1.2");
+    }
 
     // Render: heatmap has 1 EU cell (aggregate) + 7 SFDR cells + minimum_safeguards.
     const renderer = new SnapshotRenderer({
@@ -176,8 +219,10 @@ describe("filterCellsForSnapshot — SFDR not_implemented cells", () => {
     const result = filterCellsForSnapshot(snapshot.heatmap, "sfdr_v1_article_8");
     assert.equal(result.cells.length, 7);
     assert.deepEqual(result.warnings, []);
+    // Commit 1.2: Art 8 cells now carry band verdicts, not scoring_status.
     for (const c of result.cells) {
-      assert.equal(c.scoring_status, "not_implemented");
+      assert.equal(c.scoring_status, undefined);
+      assert.ok(c.rationale_text);
     }
   });
 

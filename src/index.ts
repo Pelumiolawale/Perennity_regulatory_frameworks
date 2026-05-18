@@ -85,6 +85,33 @@ export type {
   RegulatoryAnchor,
 } from "./knowledge/criterion-library";
 
+// --- SFDR scoring (v0.5.0-alpha.2, phase 1, commit 1.2) ---------------------
+// Article 8 fully scored; Article 9 criteria 8-11 still not_implemented
+// (commit 1.3). See methodologyVersion.ts for the locked band definitions
+// and src/sfdr/ for the scoring functions and orchestration.
+export {
+  SFDR_REGISTRY,
+  scoreSFDRCriteria,
+  topologicalSort,
+  validateCrossFrameworkDeps,
+} from "./sfdr";
+export type {
+  SFDRBand,
+  SFDRCriterionScore,
+  SFDRScoringFn,
+  SFDRScoringContext,
+  EntitySFDRInputs,
+  ProjectSFDRInputs,
+  ESCharacteristic,
+  EntityGovernance,
+  EntityPAIDisclosures,
+  ProjectDNSH,
+  TaxonomyClaim,
+  EntityReporting,
+  SectorMaterialCategoryId,
+} from "./sfdr";
+export { BUNDLED_SFDR_CRITERIA } from "./sfdr/bundled";
+
 // --- Knowledge-base loader --------------------------------------------------
 export {
   loadKnowledgeBase,

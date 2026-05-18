@@ -1,0 +1,23 @@
+{
+  "$schema": "./constants.schema.json",
+  "kind": "eu_non_cooperative_jurisdictions",
+  "description": "EU Council list of non-cooperative jurisdictions for tax purposes (Annex I). Refreshed semi-annually by ECOFIN Council Conclusions. Used by SFDR criterion 2 Domain D (tax compliance) to screen the developer-entity's footprint.",
+  "annex_i": [
+    "American Samoa",
+    "Anguilla",
+    "Antigua and Barbuda",
+    "Fiji",
+    "Guam",
+    "Palau",
+    "Panama",
+    "Russia",
+    "Samoa",
+    "Trinidad and Tobago",
+    "US Virgin Islands",
+    "Vanuatu"
+  ],
+  "source": "ECOFIN Council Conclusions on the revised EU list of non-cooperative jurisdictions for tax purposes (most recent confirmed: Council Conclusions of 20 February 2024).",
+  "source_url": "https://www.consilium.europa.eu/en/policies/eu-list-of-non-cooperative-jurisdictions/",
+  "last_verified": "2024-02-20",
+  "verification_note": "Last verified at the date above against the published Council Conclusions; this list refreshes ~twice yearly (February and October cycles). Before any production engagement, re-verify against the most recent ECOFIN Conclusions and refresh last_verified."
+}

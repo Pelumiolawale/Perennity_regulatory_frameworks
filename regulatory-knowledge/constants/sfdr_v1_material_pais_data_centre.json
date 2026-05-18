@@ -1,0 +1,20 @@
+{
+  "$schema": "./constants.schema.json",
+  "kind": "sfdr_v1_material_pais_data_centre",
+  "description": "The 11 PAIs (Principal Adverse Impact indicators) material for data-centre developer assessment under SFDR. PAI numbering follows Annex I of Commission Delegated Regulation (EU) 2022/1288. PAI 3 (GHG intensity of investees) is reframed under PB's developer-as-investee framing as 'developer's own GHG intensity per unit revenue or per unit IT load'. PAI 6 (energy consumption intensity for high-impact climate sectors) is treated as material for data centres despite NACE classification ambiguity. Used by SFDR criteria 3 (PAI policy) and 4 (DNSH).",
+  "annex_i_celex": "02022R1288-20230220",
+  "material_pais": [
+    { "number": 1, "name": "GHG emissions (Scope 1, 2, 3)", "category": "climate_environmental" },
+    { "number": 2, "name": "Carbon footprint", "category": "climate_environmental" },
+    { "number": 3, "name": "GHG intensity of investees (PB framing: developer's own GHG intensity per unit revenue / per unit IT load)", "category": "climate_environmental", "pb_framing_note": "Developer-as-investee" },
+    { "number": 5, "name": "Share of non-renewable energy consumption and production", "category": "climate_environmental" },
+    { "number": 6, "name": "Energy consumption intensity per high-impact climate sector", "category": "climate_environmental", "pb_framing_note": "Treated as material for data centres despite NACE classification ambiguity" },
+    { "number": 7, "name": "Activities negatively affecting biodiversity-sensitive areas", "category": "biodiversity" },
+    { "number": 8, "name": "Emissions to water", "category": "water" },
+    { "number": 9, "name": "Hazardous waste and radioactive waste ratio", "category": "waste" },
+    { "number": 10, "name": "Violations of UN Global Compact principles and OECD Guidelines for Multinational Enterprises", "category": "social_governance" },
+    { "number": 11, "name": "Lack of processes and compliance mechanisms to monitor compliance with UNGC / OECD guidelines", "category": "social_governance" },
+    { "number": 13, "name": "Board gender diversity", "category": "social_governance" }
+  ],
+  "source": "Annex I of Commission Delegated Regulation (EU) 2022/1288 (consolidated 20/02/2023), with PB-specific materiality scoping for data-centre developers."
+}
