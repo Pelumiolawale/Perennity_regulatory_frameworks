@@ -23,6 +23,25 @@ export {
   METHODOLOGY_VERSION_FULL,
 } from "./lib/methodologyVersion";
 
+// --- Render contract + FMP-ready PAI data file (v0.5.0-alpha.6, Phase 1, 1.4)
+// Structured JSON output the SPA consumes. Engine produces; SPA renders.
+// PAI data file mirrors SFDR 2022/1288 Annex I Table 1 — drop-in for FMP
+// ingestion into existing Art 9 fund PAI portfolio integration. The F8
+// deliverable from the May 2026 pressure-test.
+export { buildRenderContract } from "./lib/renderContract";
+export type {
+  RenderContract,
+  ProjectMetadata,
+  SupportedRenderLabel,
+  FrameworkFinding,
+  CriterionVerdict,
+  CriterionContractVerdict,
+  EvidenceReference as RenderEvidenceReference,
+  BuildRenderContractOptions,
+} from "./lib/renderContract";
+export { buildPAIDataFile } from "./lib/paiDataFile";
+export type { PAIDataFile, PAIRow, VerificationStatus } from "./lib/paiDataFile";
+
 // --- Bundled activities (browser-friendly KB) -------------------------------
 // loadKnowledgeBase uses node:fs + fast-glob and cannot run in browser
 // contexts. BUNDLED_ACTIVITIES is a build-time-resolved Activity[] that

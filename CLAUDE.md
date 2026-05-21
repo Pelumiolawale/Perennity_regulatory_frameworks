@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.5 (Phase 0 complete + Phase 1 commits 1.0 → 1.3.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, methodology pressure-test calibration refinements F2–F7 applied). ICMA GBP lands in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.6 (Phase 0 complete + Phase 1 commits 1.0 → 1.4a — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, and the canonical RenderContract + FMP-ready PAI data file shipped as first-class engine outputs). ICMA GBP lands in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -308,6 +308,85 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR phrase table** for snapshot — `SNAPSHOT_PHRASES` has no SFDR entries yet; the renderer's gap_list path skips SFDR verdicts in 1.2. Phrase table additions ship in commit 1.4.
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
+
+## v0.5.0-alpha.6 — RenderContract + FMP-ready PAI data file (Phase 1, commit 1.4a)
+
+Engine half of commit 1.4. SPA half (1.4b) and cross-repo integration (Phase C) ship separately. No methodology bump — 1.4 is deliverable infrastructure, not methodology substance. Methodology stays at v3.5.
+
+**Structured JSON contract for downstream renderers.** New module `src/lib/renderContract.ts` promotes a canonical, externally-consumable JSON shape to first-class status. The SPA consumes this contract; the engine emits it. Renderer architecture is locked: engine produces structured JSON only — no SNAPSHOT_PHRASES, no PDF rendering in the engine. SPA owns presentation.
+
+```ts
+export function buildRenderContract(
+  run: EngineRun,
+  opts?: BuildRenderContractOptions,
+): RenderContract;
+```
+
+Signature adapted from the prompt's `buildRenderContract(art8: Art8EvidencePack, art9: Art9EvidencePack)` shape because there is no `Art8EvidencePack` / `Art9EvidencePack` type in the engine — the actual data source is `EngineRun.framework_results[]`. The builder pulls SFDR product_label results from the run, splits by `activity_id`, and projects them into the contract.
+
+**Contract shape:**
+
+- `schema_version: "1.0.0"` (literal).
+- `methodology_version: string` — read from `METHODOLOGY_VERSION` constant, not hardcoded.
+- `generated_at: string` — defaults to `run.run_timestamp` (already deterministic via `EngineDeps.now()`).
+- `project: ProjectMetadata` — `project_id`, `project_name`, `jurisdiction`, `target_label`. Target label inferred from which SFDR frameworks were assessed (`sfdr_v1_article_8` / `sfdr_v1_article_9` / `sfdr_v1_article_8_and_9`).
+- `framework_findings: FrameworkFinding[]` — one per assessed SFDR product_label framework. Each carries `framework: "sfdr_art8" | "sfdr_art9"` and `criteria: CriterionVerdict[]`.
+- `pai_data_file: PAIDataFile` — see A.3 below.
+- `evidence_index: EvidenceReference[]` — consolidated index of every cited evidence_ref across all criteria, with `cited_by` back-references. Sorted by `ref_id`.
+- `overall_verdict: "calibration_pending"` — hardcoded literal. No top-line in v3.5. The absence is a fairness-opinion positioning feature, not a gap to fill.
+
+**`CriterionVerdict.verdict` union** drops the prompt's `"no_harm"` value — that is a per-PAI internal verdict used inside `evalPAI_*` DNSH evaluation, not a criterion-level band. Criterion verdicts use the SFDR five-band set: `aligned | partially_aligned | not_aligned | not_applicable | insufficient_evidence`. Activity-aligned verdicts (`pass`/`partial`/`fail`/`data_missing`) cannot appear because `buildRenderContract` filters to product_label SFDR results.
+
+**Honest mirror of SFDR composition.** When both Art 8 and Art 9 are assessed, the Art 9 `FrameworkFinding` carries 10 criteria (the 7 Art 8 baseline plus the 3 Art-9-specific c8/c9/c10). This reflects how the regulation actually composes — an Art 9 fund must satisfy the Art 8 baseline plus the Art 9 SI-objective machinery — and how the framework JSON references criteria. The Art 8 `FrameworkFinding` carries 7. The contract does not silently dedupe; the SPA can choose its own dedupe strategy when rendering a combined view.
+
+**FMP-ready PAI data file (the F8 deliverable).** New module `src/lib/paiDataFile.ts`. Schema-identical to SFDR 2022/1288 Annex I Table 1 — structural identity with the regulation, not a PB schema that maps to it. Drop-in for FMP ingestion into existing Art 9 fund PAI portfolio integration.
+
+```ts
+export function buildPAIDataFile(run: EngineRun): PAIDataFile;
+```
+
+Row set: 10 mandatory indicators relevant to data-centre projects — PAIs **1, 2, 4, 5, 7, 8, 9, 10, 11, 13**. Indicator names and metric definitions mirror the published regulation wording. PAI 4 (fossil-fuel sector exposure) is always emitted with `applicability: "not_applicable"` and a non-empty rationale — drop-in-ready ingestion requires structural completeness, so the row is never omitted.
+
+**Value derivation hierarchy:**
+
+1. **Art 9 explicit PAI data takes precedence.** When `project.sfdr.art9.pai_data.per_pai[n]` has a non-null `value`, the row uses it, with `data_source: "Project disclosure (Art 9 PAI data file)"` and `verification_status` derived from the per-datum `third_party_verified` flag plus pack-level `assurance_tier`.
+
+2. **DNSH evidence fallback (proxy values).** When Art 9 PAI data is absent but DNSH inputs carry the relevant signal, the row uses a documented proxy. Examples: PAI 1/2 → renewable PPA coverage; PAI 5 → renewable tier (binary 0/100); PAI 7 → TNFD LEAP risk level (Tier 2) or KBA buffer flag (Tier 1); PAI 13 → `board_women_percent`. Every proxy row's `methodology_note` cites the surrogate explicitly so FMP analysts can route the value correctly.
+
+3. **Genuine unavailability.** When neither path yields a value, `value: null` and `data_unavailable_rationale` is populated with the engine's existing evidence state. No silent zeros, no fabrication.
+
+**Verification status derivation:**
+
+- `assurance_tier === "reasonable_big4" | "limited_big4" | "limited_partial"` → `third_party_assured`.
+- `assurance_tier === "management_only"` → `management_attested`.
+- No tier and no per-datum verification flag → `unverified`.
+- PAI 4 (always n/a) → `not_applicable`.
+
+No new input collection — every field derives from existing v3.5 evidence inputs.
+
+**A.4 deferred — surfaced for follow-up.** The prompt asked to remove the v3.2-vintage `anyOf` branch in `regulatory-knowledge/activity.schema.json` (the product_label dual-shape acceptance that lets fixtures use either `[label_id, label_family, eligibility_criteria]` or `[framework_id, regime, criteria]`). The probe (temporary removal + test run, per the prompt's prescribed flow) confirmed the branch is **not dead code**:
+
+- `src/__tests__/phase_0_3_archetype.test.ts:38-49` constructs a `ProductLabelFramework` using the v3.2-shape triple to test the "non-activity-aligned framework emits warning" path.
+- `src/knowledge/__tests__/load.test.ts:182-196` validates a v3.2-shape fixture.
+- `src/knowledge/__tests__/load.test.ts:245-271` ("validator rejects product_label missing required label_id with a field-named error") explicitly asserts that the missing-field error names `label_id` — which only holds while the v3.2 branch is one of the `anyOf` arms.
+
+Two tests failed under the removal probe. The schema change was reverted. Per the prompt's explicit stop-and-surface directive for A.4, the removal is deferred to a separate "Phase 0 fixtures migration" commit that atomically (a) rewrites the three sites to v3.3 shape, (b) updates the missing-field-error test to expect `framework_id`, and (c) drops the v3.2 arm from the schema. That commit is independently testable and shouldn't be folded into 1.4.
+
+**Test coverage.** 20 new tests across two new suites:
+
+- `src/lib/__tests__/renderContract.test.ts` (8 tests): schema_version / methodology_version / overall_verdict invariants; Art 8 only → 1 finding with 7 criteria; Art 8 + Art 9 → 2 findings (7 + 10 criteria; Art 9 includes the 3 Art-9-specific); every verdict carries non-empty band_rationale; missing inputs surface as insufficient_evidence not exceptions; target_label inference; project override; evidence_index consistency; pai_data_file reachable via contract.
+- `src/lib/__tests__/paiDataFile.test.ts` (12 tests): exact 10-row order; schema_source literal; PAI 4 always not_applicable; PAI 13 DNSH derivation; Art 9 explicit value precedence; null + rationale when truly unavailable; verification_status mapping for all three AssuranceTier paths plus unverified; PAI 7 Tier 1 / Tier 2 tier-aware derivation.
+
+Baseline 219 + 20 new — **239/239 passing**. EU 8.1 KB hash invariant `sha256:b3daee…d43` unchanged.
+
+**Public exports added.** From `@perennity/engine`:
+
+- Values: `buildRenderContract`, `buildPAIDataFile`.
+- Types: `RenderContract`, `ProjectMetadata`, `SupportedRenderLabel`, `FrameworkFinding`, `CriterionVerdict`, `CriterionContractVerdict`, `RenderEvidenceReference` (aliased to avoid clash with `engine.ts`'s `EvidenceReference`), `BuildRenderContractOptions`, `PAIDataFile`, `PAIRow`, `VerificationStatus`.
+
+**No changes to existing scoring functions, types, or tests.** The render contract is purely additive. `Engine.run`, `EngineRun`, `FrameworkResult`, `CriterionResult`, `HeatmapCell`, `SnapshotOutput`, `ReportOutput` shapes unchanged. Structural-gate test unaffected.
+
+**Out of scope (next session — Phase B / 1.4b).** SPA consumption of `RenderContract`, SNAPSHOT_PHRASES (10 functions, 6-band coverage each), PDF integration per `pb-product-design/references/report-design.md` typography constraints, results page rewrite, FMP-ready PAI CSV export wiring, Vercel deploy verification. Phase C (cross-repo end-to-end) follows after 1.4b is green. The `v0.5.0` close tag waits on Phase C.
 
 ## v0.5.0-alpha.5 — Methodology v3.5 pressure-test calibration refinements (Phase 1, commit 1.3.1)
 
