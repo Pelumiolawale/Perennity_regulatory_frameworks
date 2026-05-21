@@ -42,6 +42,16 @@ export type {
 export { buildPAIDataFile } from "./lib/paiDataFile";
 export type { PAIDataFile, PAIRow, VerificationStatus } from "./lib/paiDataFile";
 
+// --- BUNDLED_SFDR_FRAMEWORKS (v0.5.0-alpha.7, Phase 1, commit 1.5a) ---------
+// Browser-safe bundle of the two SFDR product_label frameworks with their
+// criterion refs eagerly resolved. The SPA imports this directly, passes
+// `framework` to Engine.run, and uses `criteria` for per-criterion lookups
+// in the paid Report renderer. See src/lib/bundledSFDRFrameworks.ts for
+// browser-safety notes and the relationship to BUNDLED_ACTIVITIES /
+// BUNDLED_SFDR_CRITERIA.
+export { BUNDLED_SFDR_FRAMEWORKS } from "./lib/bundledSFDRFrameworks";
+export type { BundledSFDRFramework } from "./lib/bundledSFDRFrameworks";
+
 // --- Bundled activities (browser-friendly KB) -------------------------------
 // loadKnowledgeBase uses node:fs + fast-glob and cannot run in browser
 // contexts. BUNDLED_ACTIVITIES is a build-time-resolved Activity[] that

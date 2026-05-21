@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.6 (Phase 0 complete + Phase 1 commits 1.0 → 1.4a — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, and the canonical RenderContract + FMP-ready PAI data file shipped as first-class engine outputs). ICMA GBP lands in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.7 (Phase 0 complete + Phase 1 commits 1.0 → 1.5a engine half — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, canonical RenderContract + FMP-ready PAI data file as first-class engine outputs, and BUNDLED_SFDR_FRAMEWORKS for browser-safe consumption). ICMA GBP lands in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -308,6 +308,50 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR phrase table** for snapshot — `SNAPSHOT_PHRASES` has no SFDR entries yet; the renderer's gap_list path skips SFDR verdicts in 1.2. Phrase table additions ship in commit 1.4.
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
+
+## v0.5.0-alpha.7 — BUNDLED_SFDR_FRAMEWORKS for browser consumption (Phase 1, commit 1.5a engine half)
+
+Engine half of Phase 1 commit 1.5a. SPA half lands separately. No methodology bump — 1.5a is multi-regime deliverable scaffolding, not methodology substance. Methodology stays at v3.5.
+
+**Why this commit exists.** Commit 1.4c surfaced a regulatory-regime mismatch: the £85k Sustainability Readiness Report is supposed to cover both EU Taxonomy Activity 8.1 *and* SFDR Articles 8/9 (complementary regimes — EU Tax determines DC capital eligibility under the 8.1 TSC; SFDR determines downstream FMP placement). The SPA today loads only `eu_tax_climate_8_1` via `BUNDLED_ACTIVITIES`. To wire SFDR rendering, the SPA first needs a browser-safe way to load the SFDR frameworks with their criterion refs pre-resolved. This commit ships that.
+
+**New module `src/lib/bundledSFDRFrameworks.ts` + `BUNDLED_SFDR_FRAMEWORKS` export.** Static-import bundle of the two SFDR product_label framework JSONs (`regulatory-knowledge/frameworks/sfdr/v1/art-8.json` and `art-9.json`) with criterion refs eagerly resolved against the existing `BUNDLED_SFDR_CRITERIA` runtime map.
+
+```ts
+export interface BundledSFDRFramework {
+  framework: ProductLabelFramework;          // JSON itself, refs intact for Engine.run
+  criteria: Record<string, SharedCriterion>; // eagerly resolved, keyed by criterion_id
+  methodology_version: string;               // reads METHODOLOGY_VERSION ("v3.5")
+}
+
+export const BUNDLED_SFDR_FRAMEWORKS: {
+  readonly sfdr_v1_article_8: BundledSFDRFramework;
+  readonly sfdr_v1_article_9: BundledSFDRFramework;
+};
+```
+
+The shape is dual-purpose: `framework` goes straight to `Engine.run` (the existing `scoreProductLabel` path already resolves refs via `BUNDLED_SFDR_CRITERIA` at runtime); `criteria` is the pre-resolved record downstream consumers (chiefly the SPA PDF renderer) use for O(1) per-criterion lookup without walking the framework's `criteria` array. `Object.freeze` on every layer prevents downstream mutation.
+
+**Methodology version stamp.** The framework JSONs at `regulatory-knowledge/frameworks/sfdr/v1/` still carry their original `methodology_version` field (Art 8: "v3.3", Art 9: "v3.4") — stale relative to the v3.5 engine constant. The bundled stamp reads from `METHODOLOGY_VERSION` so SPA consumers see "v3.5" even before the JSON cleanup commit (1.4.1) refreshes the per-framework values. The JSONs themselves are unmodified in this commit.
+
+**Browser-safety.** Every import in the new module resolves to either a JSON file (static, browser-safe) or a pure TypeScript constant (`BUNDLED_SFDR_CRITERIA`, `METHODOLOGY_VERSION`). No `node:*` modules pulled in transitively from the reachable set rooted at `BUNDLED_SFDR_FRAMEWORKS`. The new test `bundledSFDRFrameworks.test.ts` includes a static source-text scan over the three reachable files (the new module, `src/sfdr/bundled.ts`, `src/lib/methodologyVersion.ts`) asserting none contain `node:*`, `fs`, `path`, `stream`, `fast-glob`, or `require("node:...")` imports — catches regressions at engine-test time rather than at SPA-bundle time.
+
+**Relationship to existing exports.**
+
+- `BUNDLED_ACTIVITIES` (src/index.ts): activity_aligned frameworks only (EU Tax 8.1 today). Hash-stable; do not modify. Unchanged.
+- `BUNDLED_SFDR_CRITERIA` (src/sfdr/bundled.ts): `ReadonlyMap<criterion_id, SharedCriterion>` used by `scoreProductLabel` at runtime to resolve refs in `framework.criteria[]`. Unchanged.
+- `BUNDLED_SFDR_FRAMEWORKS` (this commit): two-entry frozen object keyed by framework id. Consumes `BUNDLED_SFDR_CRITERIA` for eager resolution at module load.
+
+**No engine logic changes.** `Engine.run`, scoring functions, `CriterionResult`, `HeatmapCell`, `SnapshotOutput`, `ReportOutput`, `RenderContract` — all unchanged. The structural-gate test and the EU 8.1 KB hash invariant are unaffected.
+
+**Test coverage.** 7 new tests in `src/lib/__tests__/bundledSFDRFrameworks.test.ts`: exactly two entries with correct keys; Art 8 has 7 criteria; Art 9 has 10 criteria including the 3 Art-9-specific ids; every framework ref resolves to a real `SharedCriterion`; `methodology_version` reads from `METHODOLOGY_VERSION` ("v3.5"); the bundle and its nested entries are frozen; browser-safety static source scan over the three reachable files. Baseline 239 + 7 new = **246/246 passing**. EU 8.1 KB hash invariant `sha256:b3daee…d43` unchanged.
+
+**Public exports added.** From `@perennity/engine`:
+
+- Value: `BUNDLED_SFDR_FRAMEWORKS`.
+- Type: `BundledSFDRFramework`.
+
+**Out of scope (SPA half — Phase 1, commit 1.5a Phase B).** Tab 5 label routing → framework loading, SFDR Specifics intake section (6 fields), multi-regime PDF rendering (EU Tax 8.1 from ReportOutput + SFDR from RenderContract in sequence), PAI CSV CTA wiring. Ships separately in the SPA repo.
 
 ## v0.5.0-alpha.6 — RenderContract + FMP-ready PAI data file (Phase 1, commit 1.4a)
 
