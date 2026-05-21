@@ -169,7 +169,10 @@ const EU_8_1_PRE_COMMIT_KB_HASH =
   "sha256:b3daee284e54f3fa5a62fe33e826d6586621ce61bf2afa337ddfe89ddc7dfd43";
 
 describe("archetype-discriminated schema — phase-0/0.1", () => {
-  test("validator accepts a minimal valid product_label framework", async () => {
+  test("validator accepts a minimal valid product_label framework (v3.3 ref-based shape)", async () => {
+    // v3.5 (1.4.1): migrated from the v3.2 label_id/label_family/
+    // eligibility_criteria shape to the v3.3 framework_id/regime/criteria
+    // ref-based shape after the v3.2 anyOf arm was removed from the schema.
     const { validate } = await compileValidator(REAL_SCHEMA);
     const fixture: ProductLabelFramework = {
       archetype: "product_label",
@@ -177,21 +180,11 @@ describe("archetype-discriminated schema — phase-0/0.1", () => {
       framework: "SFDR",
       framework_version: "Regulation_2019_2088_consolidated_2024",
       framework_source_hash: "sha256:" + "0".repeat(64),
-      methodology_version: "v3.2",
+      methodology_version: "v3.5",
       effective_date: "2026-05-18",
-      label_id: "sfdr_article_8",
-      label_family: "sfdr",
-      eligibility_criteria: [
-        {
-          id: "sfdr_a8_pai_consideration",
-          criterion: "Principal Adverse Impact consideration",
-          source_reference: "Regulation_2019_2088_Article_4_paragraph_1",
-          source_text: "[verbatim text would be pulled from the canonical PAI RTS]",
-          requirement_type: "compliance_attestation",
-          scoring_logic_ref: "logic.sfdr_a8_pai_consideration.v1",
-          input_scope: ["project", "entity"],
-        },
-      ],
+      framework_id: "sfdr_v1_article_8_test",
+      regime: "sfdr_v1",
+      criteria: [],
     };
     const result = validateFramework(validate, fixture);
     assert.equal(
@@ -242,7 +235,10 @@ describe("archetype-discriminated schema — phase-0/0.1", () => {
     );
   });
 
-  test("validator rejects product_label missing required label_id with a field-named error", async () => {
+  test("validator rejects product_label missing required framework_id with a field-named error", async () => {
+    // v3.5 (1.4.1): post v3.2 anyOf removal, the required-field error on a
+    // missing product_label arm names framework_id (not label_id, which was
+    // the v3.2 arm's primary required field).
     const { validate } = await compileValidator(REAL_SCHEMA);
     const bad = {
       archetype: "product_label",
@@ -250,23 +246,23 @@ describe("archetype-discriminated schema — phase-0/0.1", () => {
       framework: "SFDR",
       framework_version: "v1",
       framework_source_hash: "sha256:" + "0".repeat(64),
-      methodology_version: "v3.2",
+      methodology_version: "v3.5",
       effective_date: "2026-05-18",
-      // label_id intentionally omitted
-      label_family: "sfdr",
-      eligibility_criteria: [],
+      // framework_id intentionally omitted
+      regime: "sfdr_v1",
+      criteria: [],
     };
     const result = validateFramework(validate, bad);
     assert.equal(result.valid, false, "expected validation to fail");
     if (result.valid) return;
-    const labelIdError = result.errors.find(
+    const frameworkIdError = result.errors.find(
       (e) =>
         e.keyword === "required" &&
-        (e.params as { missingProperty?: string }).missingProperty === "label_id",
+        (e.params as { missingProperty?: string }).missingProperty === "framework_id",
     );
     assert.ok(
-      labelIdError,
-      `expected a required:label_id error (the payoff of if/then/else over oneOf); got ${JSON.stringify(result.errors)}`,
+      frameworkIdError,
+      `expected a required:framework_id error (the payoff of if/then/else over oneOf); got ${JSON.stringify(result.errors)}`,
     );
   });
 });

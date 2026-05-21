@@ -209,14 +209,7 @@
         "properties": { "archetype": { "const": "product_label" } }
       },
       "then": {
-        "anyOf": [
-          {
-            "required": ["label_id", "label_family", "eligibility_criteria"]
-          },
-          {
-            "required": ["framework_id", "regime", "criteria"]
-          }
-        ]
+        "required": ["framework_id", "regime", "criteria"]
       }
     },
     {

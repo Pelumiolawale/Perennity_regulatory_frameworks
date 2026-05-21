@@ -8,7 +8,7 @@
   "framework": "SFDR",
   "framework_version": "Regulation_2019_2088_consolidated_2024",
   "framework_source_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
-  "methodology_version": "v3.3",
+  "methodology_version": "v3.5",
   "methodology_vintage": "May 2026",
   "effective_date": "2026-05-18",
   "regulatory_anchors": [

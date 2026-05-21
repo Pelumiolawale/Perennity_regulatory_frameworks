@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.7 (Phase 0 complete + Phase 1 commits 1.0 → 1.5a engine half — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, canonical RenderContract + FMP-ready PAI data file as first-class engine outputs, and BUNDLED_SFDR_FRAMEWORKS for browser-safe consumption). ICMA GBP lands in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.8 (Phase 0 complete + Phase 1 commits 1.0 → 1.4.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, canonical RenderContract + FMP-ready PAI data file as first-class engine outputs, BUNDLED_SFDR_FRAMEWORKS for browser-safe consumption, and engine cleanup: v3.2 anyOf removed + Phase 0 fixtures migrated + framework JSON stamps refreshed to v3.5). ICMA GBP lands in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -308,6 +308,29 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR phrase table** for snapshot — `SNAPSHOT_PHRASES` has no SFDR entries yet; the renderer's gap_list path skips SFDR verdicts in 1.2. Phrase table additions ship in commit 1.4.
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
+
+## v0.5.0-alpha.8 — Engine cleanup: v3.2 anyOf removed + Phase 0 fixtures migrated + framework JSON refreshed (Phase 1, commit 1.4.1)
+
+Bounded cleanup commit closing out three deferred items before the `v0.5.0` close tag. No methodology bump, no scoring change, no engine-output contract change. Methodology stays at v3.5.
+
+**1. v3.2 product_label `anyOf` arm removed from `regulatory-knowledge/activity.schema.json`.** Pre-1.4.1 the product_label `then` clause accepted EITHER the v3.2 shape `[label_id, label_family, eligibility_criteria]` OR the v3.3 shape `[framework_id, regime, criteria]`. The v3.2 arm was retained for backward compat with Phase 0 test fixtures. 1.4.1 migrates the fixtures (item 2) and drops the arm — the schema now requires `[framework_id, regime, criteria]` for every product_label framework. The activity_aligned backward-compat anyOf (which handles JSON without an explicit archetype field) is a separate shim and stays intact.
+
+**2. Phase 0 test fixtures migrated to v3.3 shape.** Two sites in `src/knowledge/__tests__/load.test.ts`:
+
+- `validator accepts a minimal valid product_label framework` (line 172) — rewritten from `label_id` + `label_family` + `eligibility_criteria: [...]` to `framework_id: "sfdr_v1_article_8_test"` + `regime: "sfdr_v1"` + `criteria: []`.
+- `validator rejects product_label missing required label_id with a field-named error` (line 245) — retitled to `…missing required framework_id…`, fixture now omits `framework_id` (instead of `label_id`), assertion now expects `required:framework_id` in the missing-field error.
+
+The third fixture site, `src/__tests__/phase_0_3_archetype.test.ts:38`, was deliberately NOT migrated. It tests the runtime's *non-schema-validated* fallback path: a product_label framework without v3.3-shape criteria refs (the `Array.isArray(f.criteria)` check in `runtime.ts:88`) is detected at runtime and skipped with a warning. Schema changes don't affect that path because the runtime branches don't validate against the schema. The v3.2-shape fixture is therefore still meaningful — it exercises the runtime fallback.
+
+**3. SFDR framework JSON `methodology_version` stamps refreshed.** `regulatory-knowledge/frameworks/sfdr/v1/art-8.json` changed from `"v3.3"` to `"v3.5"`; `art-9.json` from `"v3.4"` to `"v3.5"`. The bundled `BUNDLED_SFDR_FRAMEWORKS.*.methodology_version` reads from the `METHODOLOGY_VERSION` constant (always v3.5 since v0.5.0-alpha.7), so this refresh just brings the JSON stamps into agreement with the constant — the constant remains authoritative. The `methodology_version_introduced` field on the 10 criterion JSONs is unchanged (historical marker, not a current stamp).
+
+**Test coverage.** 4 new tests in `src/__tests__/phase_1_4_1_cleanup.test.ts`: v3.2-shape rejection (validator), art-8 / art-9 JSON stamps now v3.5, source-of-truth invariant (framework JSON stamps + bundled stamp + `METHODOLOGY_VERSION` all agree). Baseline 246 + 4 = **250/250 passing**. EU 8.1 KB hash invariant `sha256:b3daee…d43` unchanged (the EU Tax 8.1 JSON wasn't touched).
+
+**No engine logic changes.** `Engine.run`, scoring functions, `CriterionResult`, `HeatmapCell`, `SnapshotOutput`, `ReportOutput`, `RenderContract`, `BUNDLED_SFDR_FRAMEWORKS` shape — all unchanged. The change is purely schema validation + fixture migration + JSON stamp refresh.
+
+**No public export changes.** No new exports; no removals. SPA consumers can bump the pin from v0.5.0-alpha.7 to v0.5.0-alpha.8 with zero code changes required on their side.
+
+**Phase 1 close readiness after this commit:** the engine is at v0.5.0-alpha.8 with all engine-side cleanup work complete. The remaining Phase 1 work is SPA-side: B-2 (SFDR Specifics intake + Airtable mirror), B-3 (multi-regime PDF rendering), 1.5b (snapshotPhrases + paiCsvExport wiring), 1.4d (PDF typography redesign). After those land, Phase C verification + `v0.5.0` close tag.
 
 ## v0.5.0-alpha.7 — BUNDLED_SFDR_FRAMEWORKS for browser consumption (Phase 1, commit 1.5a engine half)
 
