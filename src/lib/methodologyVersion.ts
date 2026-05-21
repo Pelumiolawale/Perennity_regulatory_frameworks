@@ -11,6 +11,6 @@
 // preserved so audit replay (run.replay(manifest)) can reproduce the
 // methodology in force at any past engagement.
 
-export const METHODOLOGY_VERSION = "v3.4";
+export const METHODOLOGY_VERSION = "v3.5";
 export const METHODOLOGY_VINTAGE = "May 2026";
 export const METHODOLOGY_VERSION_FULL = `${METHODOLOGY_VERSION} — ${METHODOLOGY_VINTAGE}`;

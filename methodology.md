@@ -4,9 +4,142 @@ This document is the canonical record of the Perennity Bridge scoring methodolog
 
 **Single source of truth.** When you bump the constants in `methodologyVersion.ts`, append a new section to this file in the same commit. The file is append-only — historical methodology versions remain so the engine's audit replay machinery (`run.replay(manifest)`) can reproduce the methodology that was in force when any historical engagement was scored.
 
-**Current version:** `v3.4 — May 2026`
+**Current version:** `v3.5 — May 2026`
 
-Section ordering below is newest first (v3.4 at the top, earliest v3.3 declaration at the bottom). This mirrors the release-notes convention used in `CLAUDE.md`.
+Section ordering below is newest first (v3.5 at the top, earliest v3.3 declaration at the bottom). This mirrors the release-notes convention used in `CLAUDE.md`.
+
+---
+
+## v3.5 — Pressure-test calibration refinements (Phase 1, commit 1.3.1 — `v0.5.0-alpha.5`)
+
+Following methodology pressure-testing against real ICP public disclosures (May 2026), six calibration refinements land in v3.5. The v3.4 architectural decisions — the Art 9 reframe, the 90% positioning principle, the cascade architecture, the 10-criterion count — are unchanged. v3.5 is a calibration step within v3.4's architecture, not a new architecture. Each refinement preserves or raises the methodology integrity bar by shifting where conservatism expresses itself rather than relaxing it.
+
+### Refinement F2 — Criterion 3 PAI consideration policy: developer-investee framing
+
+Article 4 of SFDR is an FMP obligation, not an investee obligation. Real DC developers — who are investees, not FMPs — don't reference Art 4 in their disclosures because the obligation doesn't apply to them. v3.4's requirement for an explicit Article 4 reference was structurally unachievable for the developer-as-investee target.
+
+**v3.5 wording for criterion 3:**
+
+> "Developer-entity's PAI consideration practices align to the SFDR Article 4 disclosure framework's *content* requirements (identification of material PAIs, targets, actions, due diligence policies). Explicit Article 4 reference is not required when the developer is the investee rather than an FMP. PB tests the substance of the policy against the four content pillars; the regulatory framing is the FMP's responsibility downstream."
+
+**Band updates:** No band threshold changes. The criterion still requires ≥9 material PAIs covered for `aligned`, recency ≤12 months. What changes is the *evidence requirement for "Art 4 alignment"* — now satisfied by substantive PAI policy content, not by explicit Art 4 citation.
+
+### Refinement F3 — Criterion 4 PAI 5/6 PUE threshold: CNDCP cool/warm climate split
+
+v3.4 used a universal `≤1.3` no-harm threshold for new builds. The Climate Neutral Data Centre Pact (CNDCP) — endorsed by the European Climate, Infrastructure and Environment Executive Agency — sets PUE thresholds split by climate zone, reflecting the climate-physical reality that warm climates carry structurally higher cooling load. v3.5 adopts the CNDCP split at the no-harm level and expresses PB's investor-grade conservatism at the `aligned` band.
+
+**v3.5 PUE thresholds for criterion 4 PAI 5/6:**
+
+| Climate zone | New build `no_harm` | Existing DC `no_harm` |
+|---|---|---|
+| Cool (CDD ≤ 49.99) | PUE ≤ 1.3 | PUE ≤ 1.5 |
+| Warm (CDD ≥ 50.00) | PUE ≤ 1.4 | PUE ≤ 1.5 |
+
+PUE values *above* the climate-specific threshold are `significant_harm` for new builds. The existing DC threshold (≤1.5) stays universal.
+
+**Climate zone determination:** Use cooling degree day (CDD) measurement per CNDCP convention. Cool = CDD ≤ 49.99. Warm = CDD ≥ 50.00. Reference: EUDCA WUE White Paper Oct 2024 and CNDCP methodology. Unknown climate zone defaults to warm (more permissive at no_harm; doesn't penalise missing climate data with the stricter cool threshold).
+
+**Band updates for `aligned` (where PB conservatism now expresses itself):**
+
+| Climate zone | `aligned` (PB conservatism) | `no_harm` only (caps c4 at partially_aligned) |
+|---|---|---|
+| Cool | PUE ≤ 1.2 | 1.2 < PUE ≤ 1.3 |
+| Warm | PUE ≤ 1.3 | 1.3 < PUE ≤ 1.4 |
+
+A CNDCP-aligned warm-climate new-build DC at 1.4 clears `no_harm` (criterion 4 doesn't fail), but does not reach `aligned` on criterion 4 unless it hits the investor-grade conservatism threshold of ≤1.3. Existing DCs retain the v3.4 path: all-PAIs-no_harm → criterion 4 `aligned` (no aligned-tier upgrade applies; existing infrastructure is judged against the existing-DC no_harm floor).
+
+**Methodology integrity rationale:**
+
+> "PB's PUE conservatism expresses itself at the `aligned` band, not at the `no_harm` threshold. The Climate Neutral Data Centre Pact (CNDCP) — endorsed by the European Climate, Infrastructure and Environment Executive Agency — sets PUE ≤1.3 (cool) / ≤1.4 (warm) as the industry-standard no-harm floor. PB adopts these as the `no_harm` threshold because they reflect the climate-physical reality that warm climates carry structurally higher cooling load. PB's investor-grade conservatism — appropriate to a £85k Sustainability Readiness Report — expresses itself by requiring PUE ≤1.2 (cool) / ≤1.3 (warm) to reach the `aligned` band on new builds. This positioning lets PB's verdict be consistent with EU-endorsed industry standards while still differentiating from those standards at the investor-grade tier."
+
+### Refinement F4 — Criterion 4 PAI 7 biodiversity: TNFD LEAP Tier 2 acceptance
+
+v3.4's single-tier 2km KBA buffer test forced `insufficient_evidence` for all real projects — no developer publicly discloses site-level KBA distance data. v3.5 keeps the buffer measurement as PB's preferred Tier 1 evidence and adds TNFD LEAP framework assessment as Tier 2.
+
+**v3.5 biodiversity (PAI 7) evidence tiers:**
+
+- **Tier 1 (PB's preferred):** Quantified site-level 2km buffer measurement against Key Biodiversity Area (KBA) database (e.g., IBAT) + Environmental Impact Assessment + documented mitigation hierarchy (avoid → minimise → restore → offset) with quantified net-positive commitment.
+  - `no_harm` if >2km from KBA OR (≤2km with full mitigation hierarchy + quantified net-positive).
+  - `significant_harm` if ≤2km from KBA without complete mitigation hierarchy.
+
+- **Tier 2 (NEW — industry-standard equivalent):** TNFD LEAP framework assessment with qualitative low/medium/high biodiversity risk finding at site level + documented site-level mitigation commitment.
+  - `no_harm` if TNFD LEAP returns "low" risk + site-level mitigation commitment present.
+  - `partial_harm` (i.e. `insufficient_evidence` at the c4 per-PAI verdict level — does not trigger `significant_harm` but does not clear `no_harm`) if TNFD LEAP returns "medium" risk + site-level mitigation.
+  - `significant_harm` if TNFD LEAP returns "high" risk OR no site-level mitigation.
+
+- **Tier 3:** No biodiversity assessment → `insufficient_evidence`.
+
+**Methodology integrity rationale:**
+
+> "The 2km KBA buffer measurement is PB's preferred evidence form because it produces a quantified, auditable verdict. However, real DC developers in 2026 standardly use the TNFD LEAP framework (released September 2023, now adopted across the major DC operators) for biodiversity risk assessment. TNFD LEAP returns qualitative low/medium/high risk findings rather than distance-to-KBA quantification. Forcing all projects to produce Tier 1 evidence — which no developer currently publishes at site level — would force `insufficient_evidence` verdicts that are not informative about biodiversity outcomes. v3.5 accepts TNFD LEAP as Tier 2 evidence with band-level differentiation by risk finding. PB's bite is preserved: high-risk LEAP findings still fail; medium-risk findings still partial; only low-risk LEAP findings clear no_harm via Tier 2."
+
+### Refinement F5 — Criterion 10 PAI data file: machine-readable form as quality lever
+
+v3.4 demanded machine-readable PAI data file delivery as a hard gate for `aligned` on criterion 10. The pressure-test surfaced that no DC developer currently publishes PAI data in this form — they publish narrative ESG reports with structured appendix tables. The v3.4 requirement was pre-empting a deliverable that didn't exist.
+
+**v3.5 reframes:** the machine-readable PAI data file is a deliverable PB produces *as part of the £85k engagement*, sourced from whatever structured form the developer provides. This is consistent with PB's positioning as the FMP-ready structured deliverable producer — the report doesn't just opine, it generates the lift-ready data file that downstream FMPs can use directly. Criterion 10 now tests *whether the underlying PAI data exists with methodology references*, not *whether the developer has produced the FMP-ready file* (which is PB's job).
+
+**v3.5 criterion 10 bands:**
+
+- **aligned:** All four conditions met:
+  1. All 11 material PAIs have actual or projected values with methodology references
+  2. Operational PAIs measured within ≤12 months; design-stage PAIs from current project documentation
+  3. **NEW:** Data delivered either (a) in machine-readable form (CSV or structured JSON) by the developer, OR (b) in a structured form (PDF data table or HTML appendix) that PB can convert to machine-readable form as part of the engagement deliverable. (Either path qualifies for aligned.)
+  4. Verification gate (unchanged from v3.4): If criterion 3 is `aligned`, no additional verification requirement. If criterion 3 is `partially_aligned` or weaker, ≥9 of 11 PAIs must be third-party-verified.
+
+- **partially_aligned:** Same triggers as v3.4 EXCEPT remove "not in machine-readable form" as a partial trigger. Form is no longer a band determinant.
+
+- **not_aligned:** Same as v3.4 (<8 PAIs, missing methodology refs, KBA-coupled fail).
+
+- **insufficient_evidence:** Same as v3.4.
+
+### Refinement F6 — Criterion 8 dominance test: "load-bearing for deal thesis"
+
+v3.4's "primary commercial rationale" wording was honest but binary in a way that effectively rejected all real DC projects — commercial DC infrastructure is fundamentally commercial; the question is whether sustainability is load-bearing for that commercial proposition. v3.5 sharpens the test: would the project exist in its current form absent the SI element?
+
+**v3.5 criterion 8 condition 2 (dominance test):**
+
+> "The SI objective is the *load-bearing element of the deal thesis*. The project would not be financed in its current form absent the SI objective. Evidence:
+>
+> (a) Investment memorandum or board paper names the SI objective as the deal thesis (not as a feature alongside others), AND
+>
+> (b) Project economics depend materially on the SI contribution — revenue model, cost structure, or capital access is tied to sustainability performance (e.g., sustainability-linked debt margin adjustments, green premium pricing, EU-Taxonomy-aligned capital access), AND
+>
+> (c) Marketing/disclosure leads with the SI objective rather than treats it as a feature.
+>
+> The test asks: *would this project exist, in this form, with this financing, absent the SI objective?* If the honest answer is no, the test passes. If the project would proceed unchanged with conventional commercial financing, the test fails."
+
+**Band updates:** The bands themselves are unchanged. The dominance test result still drives the same band logic (pass → continue to other conditions; fail → `partially_aligned`).
+
+**Input-shape compatibility:** The three v3.4 boolean fields on `DominanceEvidence` (`named_in_investment_memorandum`, `economic_rationale_depends_on_si`, `marketing_leads_with_si`) map directly onto v3.5 conditions (a), (b), (c). The criterion's machine inputs are unchanged; the semantic bar (what an intake assessor should set each field to) is raised by the sharpened question. The rationale text emitted by the scoring function reflects the v3.5 framing.
+
+**Methodology integrity rationale:**
+
+> "v3.4's 'primary commercial rationale' wording was honest but binary in a way that effectively rejected all real DC projects — commercial DC infrastructure is fundamentally commercial; the question is whether sustainability is load-bearing for that commercial proposition. v3.5 sharpens the test: would the project exist in its current form absent the SI element? AirTrunk's A$16B sustainability-linked refinancing arguably passes this test (the SLL structure was load-bearing for the deal). A standard commercial DC build without sustainability-linked financing would not pass. The bite is preserved — most DC projects still fail — but the criterion now distinguishes *projects where SI is the structural anchor* from *projects where SI is a polished feature.*"
+
+### Refinement F7 — Criterion 9 auditor attestation: limited assurance acceptance
+
+Real DC developer ESG reports carry limited assurance from Big 4 firms (KPMG for AirTrunk, etc.) over selected indicators, not full reasonable assurance across every methodology component. v3.4's implicit demand for higher assurance was inconsistent with how the assurance market actually operates.
+
+**v3.5 criterion 9 attestation framework:**
+
+For criterion 9 components 1 (contribution attestation), 2 (DNSH attestation), 3 (good-governance attestation), the assurance hierarchy is:
+
+- **Tier 1 (highest):** Reasonable assurance from Big 4 (KPMG, EY, Deloitte, PwC) or IFAC-registered firm covering all three components, with no material qualifications.
+- **Tier 2 (industry standard for `aligned`):** Limited assurance from Big 4 or IFAC-registered firm covering all three components, with no material qualifications. **This is the new band threshold for `aligned`.**
+- **Tier 3:** Limited assurance covering some but not all three components, OR limited assurance with material qualifications. → `partially_aligned`.
+- **Tier 4:** No third-party assurance, management-only. → Drops criterion 9 to `partially_aligned` regardless of other components.
+
+**Band updates for criterion 9:**
+
+- **aligned:** All five components present and `aligned`/`not_applicable`; attestation at Tier 1 or Tier 2; recency met.
+- **partially_aligned:** Includes the v3.4 conditions plus the new condition: attestation only at Tier 3 or Tier 4.
+- **not_aligned:** Same as v3.4 (component cascade failures from C8/C4/C2).
+- **insufficient_evidence:** Same as v3.4.
+
+**Methodology integrity rationale:**
+
+> "Real DC developer ESG reports carry limited assurance from Big 4 firms (KPMG for AirTrunk, etc.) over selected indicators, not full reasonable assurance across every methodology component. v3.4's implicit demand for higher assurance was inconsistent with how the assurance market actually operates. v3.5 explicitly accepts limited assurance from recognised providers at the `aligned` band — which is what an FMP placing the project would also accept. PB's conservatism shifts: rather than demanding a higher assurance standard than the market provides, PB distinguishes by *scope* (all three components vs. partial) and by *material qualifications* (none vs. present). This is more honest, more auditable, and preserves the band differentiation."
 
 ---
 

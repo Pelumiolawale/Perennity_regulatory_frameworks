@@ -111,10 +111,26 @@ export interface ProjectDNSHEvidence {
   ghg_intensity_sector_top_quartile?: boolean;
   decarbonisation_pathway_documented?: boolean;
   // PAI 5, 6 — Energy
-  pue?: number; // for the threshold check (≤1.3 new build / ≤1.5 existing)
+  pue?: number;
+  // v3.5 (F3): CNDCP cool/warm split. Cool = CDD ≤ 49.99, Warm = CDD ≥ 50.00.
+  // If `climate_zone` is omitted but `cdd` is provided, the zone is derived.
+  // If neither is provided, the no_harm threshold defaults to warm (more
+  // permissive at no_harm; doesn't penalise missing climate data with the
+  // stricter cool threshold). Aligned-tier (cool ≤1.2 / warm ≤1.3 for new
+  // builds) requires the zone be known either explicitly or via CDD.
+  climate_zone?: "cool" | "warm";
+  cdd?: number;
   renewable_tier?: 1 | 2 | 3;
   transition_pathway_documented?: boolean;
   // PAI 7 — Biodiversity
+  // v3.5 (F4): Tier 1 = quantified KBA buffer measurement (PB's preferred
+  // form); Tier 2 = TNFD LEAP framework assessment (industry standard since
+  // Sept 2023). Tier-1 inputs are the v3.4 distance + EIA + mitigation fields
+  // below. Tier-2 inputs are biodiversity_assessment_type === "tnfd_leap"
+  // plus tnfd_leap_risk_level + site_level_mitigation_committed.
+  biodiversity_assessment_type?: "kba_buffer" | "tnfd_leap";
+  tnfd_leap_risk_level?: "low" | "medium" | "high";
+  site_level_mitigation_committed?: boolean;
   distance_to_biodiversity_sensitive_area_km?: number;
   eia_documented?: boolean;
   eia_concludes_no_material_disturbance?: boolean;
@@ -240,16 +256,29 @@ export interface SIObjective {
   declared_in?: string;
 }
 
+// v3.5 (F6): the dominance test asks whether the SI objective is the
+// load-bearing element of the deal thesis — would the project exist, in this
+// form, with this financing, absent the SI objective? The three boolean
+// fields encode the v3.5 three-condition test:
+//   - named_in_investment_memorandum    : condition (a) — IM / board paper
+//     names the SI objective as the deal thesis (not as a feature alongside
+//     others).
+//   - economic_rationale_depends_on_si  : condition (b) — project economics
+//     depend materially on the SI contribution (revenue model, cost
+//     structure, or capital access tied to sustainability performance:
+//     sustainability-linked debt margin adjustments, green premium pricing,
+//     EU-Taxonomy-aligned capital access).
+//   - marketing_leads_with_si           : condition (c) — marketing /
+//     disclosure leads with the SI objective rather than treats it as a
+//     feature.
+// All three must hold for the dominance test to pass. The field names were
+// established in v3.4; v3.5 sharpens the semantic bar by reframing the
+// question the assessor is answering rather than altering the input shape.
 export interface DominanceEvidence {
-  // Named in board paper / IM as the deal thesis.
   named_in_investment_memorandum: boolean;
   investment_memorandum_ref?: string;
-  // Project economics depend on the SI contribution (renewable PPA revenue,
-  // decarb premium, efficiency-driven cost structure, etc.).
   economic_rationale_depends_on_si: boolean;
   economic_rationale_description?: string;
-  // Marketing/disclosure leads with the SI objective, not conventional
-  // commercial features.
   marketing_leads_with_si: boolean;
 }
 
@@ -301,13 +330,41 @@ export interface Art9SIObjectiveInputs {
 
 export type AttestationKind = "auditor" | "technical_advisor" | "management_only";
 
+// v3.5 (F7): four-tier assurance hierarchy. ESG assurance is typically
+// pack-level (one engagement covers the report as a whole), so the tier and
+// material-qualifications flag are properties of the evidence pack rather
+// than per-component. Per-component `*_attestation` fields below remain for
+// declaring whether each component is attested at all; when `assurance_tier`
+// is provided it overrides the legacy per-component band logic.
+//   - reasonable_big4: Tier 1 (highest) — reasonable assurance from Big 4 /
+//     IFAC-registered firm covering all three components, no qualifications.
+//   - limited_big4   : Tier 2 (industry standard for `aligned`) — limited
+//     assurance from Big 4 / IFAC, all three components, no qualifications.
+//   - limited_partial: Tier 3 — limited assurance covering some but not all
+//     three components, OR limited assurance with material qualifications.
+//   - management_only: Tier 4 — no third-party assurance.
+export type AssuranceTier =
+  | "reasonable_big4"
+  | "limited_big4"
+  | "limited_partial"
+  | "management_only";
+
 export interface Art9EvidencePackInputs {
   contribution_attestation?: AttestationKind;
   dnsh_attestation?: AttestationKind;
   governance_attestation?: AttestationKind;
+  // v3.5 (F7): pack-level assurance tier + qualifications. When provided,
+  // these drive the c9 attestation band; otherwise c9 falls back to the
+  // legacy per-component AttestationKind logic for backward compat.
+  assurance_tier?: AssuranceTier;
+  material_qualifications_present?: boolean;
   // Reference to PAI data file (criterion 10 also reads its presence).
   pai_data_file_ref?: string;
-  pai_data_file_machine_readable_form?: "csv" | "json";
+  // v3.5 (F5): structured forms (PDF data table, HTML appendix) now
+  // qualify alongside CSV/JSON. PB produces the machine-readable file as
+  // part of the engagement deliverable from whatever structured form the
+  // developer supplies.
+  pai_data_file_machine_readable_form?: "csv" | "json" | "structured_pdf" | "structured_html";
   // Documentation recency. Operational data: ≤12mo for aligned, 12-18mo for
   // partially_aligned. Design-stage: ≤24mo for both bands.
   operational_doc_age_months?: number;
@@ -335,7 +392,12 @@ export interface Art9PAIDataInputs {
   // Keyed by PAI number as string ("1", "2", ...). Material set is
   // MATERIAL_PAI_NUMBERS — same 11 PAIs as criteria 3 and 4.
   per_pai?: Record<string, ProjectPAIDatum>;
-  machine_readable_form?: "csv" | "json";
+  // v3.5 (F5): structured forms (PDF data table, HTML appendix) qualify for
+  // aligned alongside CSV/JSON. Criterion 10 tests whether the underlying
+  // PAI data exists with methodology references, not whether the developer
+  // has produced the FMP-ready machine-readable file — PB produces that as
+  // part of the £85k engagement deliverable from any structured form.
+  machine_readable_form?: "csv" | "json" | "structured_pdf" | "structured_html";
   data_recency_months?: number;
   // Proximity to a Key Biodiversity Area, for the PAI 7 gate.
   within_2km_of_kba?: boolean;

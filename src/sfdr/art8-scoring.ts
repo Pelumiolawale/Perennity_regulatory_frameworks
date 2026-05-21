@@ -195,13 +195,22 @@ function domainD(t: NonNullable<EntitySFDRInputs["governance"]>["tax_compliance"
 }
 
 // -- Criterion 3: PAI consideration policy ----------------------------------
+//
+// v3.5 (F2 — developer-investee framing): Article 4 of SFDR is an FMP
+// obligation, not an investee obligation. Real DC developers don't reference
+// Art 4 in their disclosures because the obligation doesn't apply to them.
+// The criterion now tests substance — the four content pillars of an Art 4-
+// style policy (material PAIs identified, targets, actions, due-diligence) —
+// without requiring an explicit Art 4 citation as evidence. The legacy
+// `art_4_explicit_reference` input is retained for backward compatibility
+// with v3.4-vintage fixtures but no longer participates in the aligned gate.
 
 export const art8_c3_pai_policy: SFDRScoringFn = (ctx) => {
   const sfdr = getEntitySFDR(ctx);
   const pai = sfdr?.pai_disclosures;
   if (!pai || !pai.statement_url) {
     return insufficient(
-      "No entity-level PAI consideration statement URL provided; cannot evaluate Art 4 disclosure.",
+      "No entity-level PAI consideration statement URL provided; cannot evaluate PAI policy substance.",
     );
   }
   let pais_full = 0;
@@ -218,11 +227,7 @@ export const art8_c3_pai_policy: SFDRScoringFn = (ctx) => {
   }
   const recencyDays = daysSince(pai.statement_published_date) ?? Number.POSITIVE_INFINITY;
   let band: SFDRBand;
-  if (
-    pais_full >= 9 &&
-    recencyDays <= PAI_POLICY_ALIGNED_RECENCY_DAYS &&
-    pai.art_4_explicit_reference
-  ) {
+  if (pais_full >= 9 && recencyDays <= PAI_POLICY_ALIGNED_RECENCY_DAYS) {
     band = "aligned";
   } else if (
     (pais_full >= 6 || pais_addressed >= 9) &&
@@ -236,8 +241,8 @@ export const art8_c3_pai_policy: SFDRScoringFn = (ctx) => {
     band,
     rationale_text:
       `${pais_full}/${MATERIAL_PAI_NUMBERS.length} material PAIs fully evidenced; ` +
-      `statement age ${recencyDays === Number.POSITIVE_INFINITY ? "unknown" : `${recencyDays} days`}; ` +
-      `Art 4 reference: ${pai.art_4_explicit_reference ? "yes" : "no"}.`,
+      `statement age ${recencyDays === Number.POSITIVE_INFINITY ? "unknown" : `${recencyDays} days`}. ` +
+      `Substance-based assessment (v3.5): Art 4 explicit citation is not required for developer-investees.`,
     evidence_refs: pai.statement_url ? [pai.statement_url] : [],
     numeric_value: {
       value: pais_full,
@@ -248,8 +253,28 @@ export const art8_c3_pai_policy: SFDRScoringFn = (ctx) => {
 };
 
 // -- Criterion 4: DNSH assessment -------------------------------------------
+//
+// v3.5 calibration refinements:
+//   F3 — PAI 5/6 PUE uses CNDCP cool/warm climate split at no_harm; PB
+//        investor-grade conservatism at the aligned band (cool ≤1.2 /
+//        warm ≤1.3 for new builds). Existing DCs retain v3.4 path.
+//   F4 — PAI 7 biodiversity adds TNFD LEAP Tier 2 evidence acceptance
+//        alongside the Tier 1 KBA-buffer test.
 
 type PAIVerdict = "no_harm" | "significant_harm" | "insufficient_evidence";
+
+// Cool = CDD ≤ 49.99, Warm = CDD ≥ 50.00, per CNDCP convention. Unknown zone
+// (no climate_zone and no cdd) is treated as warm — the more permissive
+// no_harm threshold — so missing climate data doesn't get penalised with the
+// stricter cool threshold. Aligned-tier checks (which require zone to be
+// known) gate separately below.
+function resolveClimateZone(
+  d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["evidence"]>,
+): "cool" | "warm" | null {
+  if (d.climate_zone === "cool" || d.climate_zone === "warm") return d.climate_zone;
+  if (typeof d.cdd === "number") return d.cdd <= 49.99 ? "cool" : "warm";
+  return null;
+}
 
 export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
   const dnsh = getProjectSFDR(ctx)?.dnsh?.evidence;
@@ -276,6 +301,7 @@ export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
     else noHarm++;
   }
   let band: SFDRBand;
+  let extraRationale = "";
   if (harms.length > 0) {
     band = "not_aligned";
   } else if (insufficientPais.length >= 4) {
@@ -283,7 +309,17 @@ export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
   } else if (insufficientPais.length >= 3) {
     band = "not_aligned";
   } else if (noHarm === MATERIAL_PAI_NUMBERS.length) {
-    band = "aligned";
+    // v3.5 (F3): all PAIs no_harm — for new builds, gate aligned on the
+    // stricter PB conservatism PUE threshold (cool ≤1.2 / warm ≤1.3).
+    // Existing DCs and projects without PUE skip the aligned-tier gate.
+    const alignedTier = checkPUEAlignedTier(dnsh);
+    if (alignedTier === "below_aligned_tier") {
+      band = "partially_aligned";
+      extraRationale =
+        " v3.5 PB-conservatism gate: all PAIs clear no_harm but new-build PUE is above the aligned-tier threshold (cool ≤1.2 / warm ≤1.3); criterion 4 caps at partially_aligned.";
+    } else {
+      band = "aligned";
+    }
   } else {
     band = "partially_aligned";
   }
@@ -292,9 +328,29 @@ export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
     rationale_text:
       `Per-PAI: ` +
       [...perPai.entries()].map(([n, v]) => `PAI${n}=${v}`).join(", ") +
-      ` (${noHarm} no_harm, ${harms.length} significant_harm, ${insufficientPais.length} insufficient).`,
+      ` (${noHarm} no_harm, ${harms.length} significant_harm, ${insufficientPais.length} insufficient).` +
+      extraRationale,
   };
 };
+
+// Returns "meets_aligned_tier" if PUE clears the v3.5 PB-conservatism gate
+// for the project's climate zone; "below_aligned_tier" if PUE clears no_harm
+// but not the stricter aligned-tier threshold; "not_applicable" if the gate
+// doesn't apply (existing DC, no PUE, etc.).
+function checkPUEAlignedTier(
+  d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["evidence"]>,
+): "meets_aligned_tier" | "below_aligned_tier" | "not_applicable" {
+  if (d.pue === undefined) return "not_applicable";
+  if (!d.new_build) return "not_applicable"; // existing DCs: no aligned-tier upgrade
+  const zone = resolveClimateZone(d);
+  // Aligned-tier requires zone to be known. Unknown zone with a new build
+  // means we evaluated against the permissive warm no_harm threshold but
+  // can't fairly upgrade to aligned without zone evidence — stay at
+  // partially_aligned via "below_aligned_tier".
+  if (zone === null) return "below_aligned_tier";
+  const threshold = zone === "cool" ? 1.2 : 1.3;
+  return d.pue <= threshold ? "meets_aligned_tier" : "below_aligned_tier";
+}
 
 function evalPAI_GHG(d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["evidence"]>): PAIVerdict {
   if (d.sbti_validated) return "no_harm";
@@ -317,8 +373,15 @@ function evalPAI_GHG(d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["evid
 function evalPAI_Energy(d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["evidence"]>): PAIVerdict {
   if (d.pue === undefined) return "insufficient_evidence";
   const isNewBuild = d.new_build ?? false;
-  const pueThreshold = isNewBuild ? 1.3 : 1.5;
-  const pueFailThreshold = isNewBuild ? 1.5 : 1.8;
+  // v3.5 (F3): CNDCP cool/warm split at no_harm. Unknown zone → warm.
+  let pueThreshold: number;
+  if (isNewBuild) {
+    const zone = resolveClimateZone(d) ?? "warm";
+    pueThreshold = zone === "cool" ? 1.3 : 1.4;
+  } else {
+    pueThreshold = 1.5; // existing DC threshold stays universal
+  }
+  const pueFailThreshold = isNewBuild ? 1.6 : 1.8;
   if (d.pue > pueFailThreshold) return "significant_harm";
   if (d.pue > pueThreshold) return "insufficient_evidence";
   if (d.renewable_tier === 3 && !d.transition_pathway_documented) return "significant_harm";
@@ -326,6 +389,20 @@ function evalPAI_Energy(d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["e
 }
 
 function evalPAI_Biodiversity(d: NonNullable<NonNullable<ProjectSFDRInputs["dnsh"]>["evidence"]>): PAIVerdict {
+  // v3.5 (F4): three-tier evidence acceptance. Tier 2 (TNFD LEAP) is selected
+  // when biodiversity_assessment_type === "tnfd_leap"; otherwise the Tier 1
+  // (KBA buffer) path is run. Absence of either evidence form → Tier 3
+  // (insufficient_evidence).
+  if (d.biodiversity_assessment_type === "tnfd_leap") {
+    if (d.tnfd_leap_risk_level === undefined) return "insufficient_evidence";
+    if (d.tnfd_leap_risk_level === "high") return "significant_harm";
+    if (!d.site_level_mitigation_committed) return "significant_harm";
+    if (d.tnfd_leap_risk_level === "low") return "no_harm";
+    // medium risk + mitigation → not significant_harm, but not a clean no_harm
+    return "insufficient_evidence";
+  }
+
+  // Tier 1 — KBA buffer (PB's preferred quantified evidence form).
   const dist = d.distance_to_biodiversity_sensitive_area_km;
   if (dist === undefined) return "insufficient_evidence";
   if (d.eia_concludes_net_negative_unmitigated) return "significant_harm";

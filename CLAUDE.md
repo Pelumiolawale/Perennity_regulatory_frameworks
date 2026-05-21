@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.4 (Phase 0 complete + Phase 1 commits 1.0 → 1.3 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.4 with deterministic five-band verdicts). ICMA GBP lands in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.5 (Phase 0 complete + Phase 1 commits 1.0 → 1.3.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, methodology pressure-test calibration refinements F2–F7 applied). ICMA GBP lands in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -308,6 +308,59 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR phrase table** for snapshot — `SNAPSHOT_PHRASES` has no SFDR entries yet; the renderer's gap_list path skips SFDR verdicts in 1.2. Phrase table additions ship in commit 1.4.
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
+
+## v0.5.0-alpha.5 — Methodology v3.5 pressure-test calibration refinements (Phase 1, commit 1.3.1)
+
+Patch release on top of `v0.5.0-alpha.4`. Methodology bumped to v3.5 with six calibration refinements (F2–F7) from May 2026 pressure-testing against real ICP public disclosures (AirTrunk, STT GDC, Digital Edge). The v3.4 architecture is unchanged: Art 9 reframe, 90% positioning principle, cascade architecture, 10-criterion count all preserved. v3.5 is a calibration step within v3.4, not a re-architecting. Each refinement preserves or raises the methodology integrity bar by shifting where conservatism expresses itself.
+
+**Methodology doc location:** the prompt assumed `regulatory-knowledge/methodology.md`. Actual location is `/methodology.md` at repo root (the extraction commit `3adc589` landed it there; `src/lib/methodologyVersion.ts`'s own doc-comment now states this explicitly). v3.5 changelog section appended to that file.
+
+**Refinements:**
+
+- **F2 (criterion 3, c3 substance over Art 4 citation):** Article 4 of SFDR is an FMP obligation, not an investee obligation — developers don't reference Art 4 because the obligation doesn't apply to them. The aligned gate no longer requires `art_4_explicit_reference` to be true; the field is retained on `EntityPAIDisclosures` for backward compat but no longer participates in scoring. Substance assessment (≥9 material PAIs, ≤12mo recency) is unchanged.
+
+- **F3 (criterion 4 PAI 5/6 PUE — CNDCP cool/warm climate split):** v3.4's universal new-build threshold of ≤1.3 diverged from the EU-endorsed CNDCP industry standard (cool ≤1.3 / warm ≤1.4). v3.5 adopts CNDCP at the `no_harm` level (cool ≤1.3 new / warm ≤1.4 new / ≤1.5 existing universal) and expresses PB's investor-grade conservatism at the `aligned` band (cool ≤1.2 / warm ≤1.3 for new builds; existing DCs retain the v3.4 "all-PAIs-no_harm → aligned" path because there's no aligned-tier defined for existing infrastructure). Unknown climate zone defaults to warm at `no_harm` (more permissive) but blocks the aligned-tier upgrade (zone evidence required). New optional fields on `ProjectDNSHEvidence`: `climate_zone: "cool" | "warm"` and `cdd: number` (CDD-derived zone when explicit not provided). The c4 band synthesis now runs a `checkPUEAlignedTier` step that caps c4 at `partially_aligned` when all PAIs clear no_harm but PUE is above the aligned-tier threshold for new builds.
+
+- **F4 (criterion 4 PAI 7 biodiversity — TNFD LEAP Tier 2 acceptance):** v3.4's single-tier 2km KBA buffer test forced `insufficient_evidence` for all real projects because no DC developer publicly discloses site-level KBA distance data. v3.5 adds Tier 2 TNFD LEAP framework acceptance alongside the Tier 1 KBA-buffer path. New optional fields on `ProjectDNSHEvidence`: `biodiversity_assessment_type: "kba_buffer" | "tnfd_leap"`, `tnfd_leap_risk_level: "low" | "medium" | "high"`, `site_level_mitigation_committed: boolean`. Tier 2 band logic: low risk + mitigation → no_harm; high risk OR no mitigation → significant_harm; medium → insufficient_evidence (not a clean no_harm). Tier 1 path is unchanged. The bite is preserved: high-risk LEAP still fails c4; medium-risk doesn't reach no_harm; only low-risk LEAP + mitigation clears via Tier 2.
+
+- **F5 (criterion 10 — machine-readable form as quality lever, not hard gate):** v3.4 demanded developer-side machine-readable PAI data file as a hard gate for `aligned`, pre-empting a deliverable that doesn't exist in current industry practice. v3.5 reframes: the machine-readable file is what *PB* produces as part of the £85k engagement deliverable from whatever structured form the developer provides. The `machine_readable_form` union on `Art9PAIDataInputs` (and on `Art9EvidencePackInputs.pai_data_file_machine_readable_form`) extends to `"csv" | "json" | "structured_pdf" | "structured_html"`. Any of these qualifies for aligned. The c10 `STRUCTURED_DATA_FORMS` set encodes the new acceptance; the partial-cap branch for non-machine-readable form is removed. JSDoc on the field explains the positioning.
+
+- **F6 (criterion 8 dominance test — "load-bearing for deal thesis"):** v3.4's "primary commercial rationale" wording was honest but binary in a way that effectively rejected all real DC projects. v3.5 sharpens the test: would the project exist, in this form, with this financing, absent the SI objective? The three `DominanceEvidence` boolean fields are unchanged (`named_in_investment_memorandum`, `economic_rationale_depends_on_si`, `marketing_leads_with_si`) — they map directly onto v3.5 conditions (a), (b), (c). What changes: JSDoc on `DominanceEvidence` reframes the assessor's question; the c8 scoring function's failure rationale enumerates which specific condition failed using the (a)/(b)/(c) labels.
+
+- **F7 (criterion 9 attestation — four-tier assurance hierarchy):** v3.4's implicit demand for higher assurance (auditor on all three components) was inconsistent with how the ESG assurance market actually operates — real reports carry limited assurance from Big 4 firms over selected indicators. v3.5 introduces a four-tier hierarchy at the pack level: Tier 1 (`reasonable_big4`) and Tier 2 (`limited_big4`, no qualifications) both reach `aligned`; Tier 3 (`limited_partial` OR `limited_big4` with material qualifications) and Tier 4 (`management_only`) cap at `partially_aligned`. New optional fields on `Art9EvidencePackInputs`: `assurance_tier: AssuranceTier` and `material_qualifications_present: boolean`. When `assurance_tier` is omitted, c9 falls back to the v3.4 per-component `AttestationKind` logic (preserves all v3.4 fixtures and their expected outcomes).
+
+**Input shape extensions (all additive on existing types):**
+
+- `ProjectDNSHEvidence` (F3): `climate_zone?: "cool" | "warm"`, `cdd?: number`.
+- `ProjectDNSHEvidence` (F4): `biodiversity_assessment_type?: "kba_buffer" | "tnfd_leap"`, `tnfd_leap_risk_level?: "low" | "medium" | "high"`, `site_level_mitigation_committed?: boolean`.
+- `Art9EvidencePackInputs` (F7): `assurance_tier?: AssuranceTier`, `material_qualifications_present?: boolean`.
+- `Art9PAIDataInputs.machine_readable_form` (F5): union widened to include `"structured_pdf" | "structured_html"`.
+- `Art9EvidencePackInputs.pai_data_file_machine_readable_form` (F5): same union widening.
+- New exported type: `AssuranceTier` from `src/sfdr/types.ts`.
+
+No breaking input changes; every v3.4-vintage fixture continues to score under v3.5 without modification.
+
+**Methodology integrity discipline:** v3.5's six refinements either preserve the integrity bar (F2 substitutes citation for substance — same content requirements, different evidence form; F5 doesn't lower the data threshold, just stops policing developer-side delivery format that PB produces anyway) or shift conservatism to a different band (F3 expresses PB-tier conservatism at `aligned` while harmonising `no_harm` with CNDCP / EU-endorsed industry standard; F4 keeps PB's bite by failing high-risk LEAP and not clearing medium-risk; F6 sharpens the dominance question to one that's harder to game; F7 distinguishes by scope and qualifications rather than demanding a higher assurance standard than the market provides).
+
+**Test coverage:**
+
+- 12 new tests in `src/sfdr/__tests__/methodology_v35.test.ts` covering F2, F3, F4, F5, F6, F7.
+- F3 distribution: cool 1.3 caps partial; warm 1.4 caps partial; warm 1.45 above no_harm → criterion partially_aligned via insufficient PAI; regression cool 1.15 stays aligned.
+- F4: TNFD LEAP low + mitigation → aligned (via no_harm); TNFD LEAP high → c4 not_aligned (via significant_harm).
+- F5: structured PDF appendix + c3 aligned → c10 aligned with rationale mentioning FMP-ready deliverable.
+- F6: all three conditions pass → c8 aligned; condition (b) economics fails → c8 partially with rationale citing the (b) failure.
+- F7: Tier 2 limited_big4 + no qualifications → c9 aligned (v3.4 would have been partial); Tier 2 + material qualifications → c9 partially.
+- F2: 9 full + recent + Art 4 NOT cited → c3 aligned (v3.4 would have been partial).
+- All 207 v3.4 baseline tests continue to pass — **total 219/219**.
+- EU 8.1 KB hash invariant `sha256:b3daee…d43` green.
+
+**Engine integration:** no orchestrator, runtime, or renderer changes. The refinements live entirely in `src/sfdr/art8-scoring.ts`, `src/sfdr/art9-scoring.ts`, and `src/sfdr/types.ts`. `CriterionResult` / `HeatmapCell` / `SnapshotOutput` / `ReportOutput` shapes unchanged. Structural-gate test unaffected (no new allowlist keys; no rationale-text changes that would trip the magic-marker walks).
+
+**Out of scope (deliberately deferred):**
+
+- **F1 (strategic ICP mis-targeting):** GTM finding, not engine work. No engine change.
+- **F8 (FMP-ready structured deliverable positioning):** belongs in commit 1.4 (renderer scoping for the paid PDF). No engine change in 1.3.1.
+- **Aggregate Art 8 / Art 9 verdict calibration:** weights stay `null`; framework `overall_verdict` is `not_applicable` (calibration_pending). Calibration commit ships post-Phase-1, unchanged from v3.4.
 
 ## v0.5.0-alpha.4 — SFDR Article 9 scoring + methodology v3.4 + criterion 11 fold (Phase 1, commit 1.3)
 

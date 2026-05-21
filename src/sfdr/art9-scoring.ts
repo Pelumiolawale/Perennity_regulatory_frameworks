@@ -149,7 +149,19 @@ export const art9_c8_si_objective_qualification: SFDRScoringFn = (ctx) => {
     rationale = `SI objective declared but sub-case (b) fails: benchmark-aligned engagement requires both activity-exclusion clearance and the benchmark's YoY intensity trajectory (7% for EU CTB, 10% for EU PAB). Provided trajectory: ${sub_b?.carbon_intensity_yoy_pct ?? "missing"}%; exclusions cleared: ${sub_b?.activity_exclusions_cleared ? "yes" : "no"}.`;
   } else if (!dominancePass && condition3) {
     band = "partially_aligned";
-    rationale = `SI objective "${obj.name}" is named and quantified with ${recognisedSourceCount} indicators, but the dominance test fails — SI appears to be a feature, not the primary commercial rationale of the project. Investment memo / economics / marketing evidence is incomplete.`;
+    // v3.5 (F6): "load-bearing for deal thesis" framing. The honest test is
+    // whether the project would exist, in this form, with this financing,
+    // absent the SI objective. A project that would proceed unchanged under
+    // conventional commercial financing fails this test — SI is a polished
+    // feature, not the structural anchor.
+    const failedConditions: string[] = [];
+    if (!dom?.named_in_investment_memorandum)
+      failedConditions.push("(a) SI objective not named as the deal thesis in IM / board paper");
+    if (!dom?.economic_rationale_depends_on_si)
+      failedConditions.push("(b) project economics do not materially depend on SI contribution (no sustainability-linked margin, green premium, or Taxonomy-tied capital access)");
+    if (!dom?.marketing_leads_with_si)
+      failedConditions.push("(c) marketing / disclosure does not lead with the SI objective");
+    rationale = `SI objective "${obj.name}" is named and quantified with ${recognisedSourceCount} indicators, but the dominance test fails: the project would proceed in its current form under conventional commercial financing. Failed conditions: ${failedConditions.join("; ")}.`;
   } else if (dominancePass && condition3_partial) {
     band = "partially_aligned";
     rationale = `SI objective "${obj.name}" passes the dominance test with ${totalIndicatorsWithBaselineAndTarget} quantified indicators, but they use bespoke metrics rather than Art 2(17) examples or L2 RTS Annex I PAI indicators.`;
@@ -161,7 +173,7 @@ export const art9_c8_si_objective_qualification: SFDRScoringFn = (ctx) => {
     rationale = `9(3) carbon-reduction sub-case applies and is partially evidenced (one of {SBTi-validated + net-zero, EU CTB/PAB alignment, IEA NZE pathway} is present; others incomplete).`;
   } else if (!dominancePass) {
     band = "not_aligned";
-    rationale = `SI objective "${obj.name}" fails the dominance test and does not meet the indicator threshold — project economics appear conventional with sustainability as bolt-on.`;
+    rationale = `SI objective "${obj.name}" fails the v3.5 dominance test (would the project exist absent the SI objective? yes) and does not meet the indicator threshold — sustainability presents as a bolt-on rather than the load-bearing element of the deal thesis.`;
   } else {
     band = "not_aligned";
     rationale = `SI objective "${obj.name}" declared but contribution evidence is below threshold (${recognisedSourceCount}/3 recognised-source quantified indicators).`;
@@ -230,32 +242,40 @@ export const art9_c9_si_eligibility_evidence_pack: SFDRScoringFn = (ctx) => {
     };
   }
 
-  // ------ Attestation kind / band aggregation ------------------------------
+  // ------ Attestation tier / band aggregation ------------------------------
+  // v3.5 (F7): four-tier assurance hierarchy. When `assurance_tier` is
+  // provided on the evidence pack, it drives the attestation band:
+  //   Tier 1 (reasonable_big4) + no material qualifications     → aligned-eligible
+  //   Tier 2 (limited_big4)    + no material qualifications     → aligned-eligible (industry standard)
+  //   Tier 3 (limited_partial) OR (limited_big4 + qualifications) → caps at partially_aligned
+  //   Tier 4 (management_only)                                  → caps at partially_aligned
+  // When `assurance_tier` is omitted, fall back to the v3.4 per-component
+  // AttestationKind logic for backward compatibility with existing fixtures.
   const allAligned = components.every((c) => c.verdict === "aligned");
   const anyNotAligned = components.some((c) => c.verdict === "not_aligned");
   const anyPartial = components.some((c) => c.verdict === "partially_aligned");
 
-  const attestationKinds = [
-    ep.contribution_attestation,
-    ep.dnsh_attestation,
-    ep.governance_attestation,
-  ];
-  const allAuditorOrAdvisor = attestationKinds.every(
-    (k) => k === "auditor" || k === "technical_advisor",
-  );
-  const anyManagementOnly = attestationKinds.some((k) => k === "management_only");
+  const attestationStrong = isAttestationStrong(ep);
+  const attestationDescriptor = describeAttestation(ep);
 
   let band: SFDRBand;
   let rationale: string;
-  if (allAligned && allAuditorOrAdvisor) {
-    band = "aligned";
-    rationale = `Evidence pack complete: all five components aligned, with auditor or technical-advisor attestation on the contribution / DNSH / governance components.`;
-  } else if (anyNotAligned) {
+  if (anyNotAligned) {
     band = "not_aligned";
     rationale = `Evidence pack has a component at not_aligned: ${components.filter((c) => c.verdict === "not_aligned").map((c) => c.name).join("; ")}.`;
-  } else if (allAligned && anyManagementOnly) {
+  } else if (allAligned && attestationStrong) {
+    band = "aligned";
+    rationale = `Evidence pack complete: all five components aligned. Attestation: ${attestationDescriptor}.`;
+  } else if (allAligned && !attestationStrong) {
     band = "partially_aligned";
-    rationale = `All five components aligned but at least one is management-prepared rather than auditor-attested; for SI-eligible Art 9 lift, components 1–3 require auditor or technical-advisor attestation.`;
+    // Legacy fallback uses different wording than the v3.5 tier path so
+    // existing v3.4 fixtures (which set per-component kinds, not tier) get
+    // an unambiguous "management-prepared" rationale string.
+    if (ep.assurance_tier === undefined) {
+      rationale = `All five components aligned but at least one is management-prepared rather than auditor-attested; for SI-eligible Art 9 lift, components 1–3 require auditor or technical-advisor attestation.`;
+    } else {
+      rationale = `All five components aligned but attestation does not reach the v3.5 Tier 1/2 bar for aligned: ${attestationDescriptor}. v3.5 caps at partially_aligned when assurance is Tier 3 (limited assurance with partial scope or material qualifications) or Tier 4 (management-only).`;
+    }
   } else if (anyPartial) {
     band = "partially_aligned";
     rationale = `Evidence pack has ≥1 component partially_aligned: ${components.filter((c) => c.verdict === "partially_aligned").map((c) => c.name).join("; ")}.`;
@@ -270,6 +290,46 @@ export const art9_c9_si_eligibility_evidence_pack: SFDRScoringFn = (ctx) => {
     evidence_refs: ep.pai_data_file_ref ? [ep.pai_data_file_ref] : [],
   };
 };
+
+// v3.5 (F7): is attestation strong enough for aligned?
+// Tier path: Tier 1 always; Tier 2 only if no material qualifications.
+// Legacy path: every component is auditor / technical_advisor (no
+// management_only), preserving v3.4 behaviour for fixtures without
+// assurance_tier set.
+function isAttestationStrong(ep: Art9EvidencePackInputs): boolean {
+  if (ep.assurance_tier !== undefined) {
+    if (ep.assurance_tier === "reasonable_big4") return true;
+    if (ep.assurance_tier === "limited_big4") {
+      return ep.material_qualifications_present !== true;
+    }
+    return false; // limited_partial, management_only
+  }
+  const kinds = [
+    ep.contribution_attestation,
+    ep.dnsh_attestation,
+    ep.governance_attestation,
+  ];
+  return kinds.every((k) => k === "auditor" || k === "technical_advisor");
+}
+
+function describeAttestation(ep: Art9EvidencePackInputs): string {
+  if (ep.assurance_tier !== undefined) {
+    const tierName = {
+      reasonable_big4: "Tier 1 (reasonable assurance, Big 4 / IFAC-registered, all three components)",
+      limited_big4: "Tier 2 (limited assurance, Big 4 / IFAC-registered, all three components)",
+      limited_partial: "Tier 3 (limited assurance, partial scope or material qualifications)",
+      management_only: "Tier 4 (no third-party assurance, management-only)",
+    }[ep.assurance_tier];
+    const quals =
+      ep.material_qualifications_present === true
+        ? " — material qualifications present"
+        : ep.material_qualifications_present === false
+          ? " — no material qualifications"
+          : "";
+    return `${tierName}${quals}`;
+  }
+  return `auditor / technical-advisor on contribution / DNSH / governance components (legacy per-component attestation; assurance_tier not provided)`;
+}
 
 function isRecencyAligned(ep: Art9EvidencePackInputs): boolean {
   const op = ep.operational_doc_age_months;
@@ -287,6 +347,22 @@ function isRecencyPartial(ep: Art9EvidencePackInputs): boolean {
 }
 
 // -- Criterion 10: Project PAI data provision (verification gate reads c3) --
+//
+// v3.5 (F5 — machine-readable form as quality lever, not gate):
+// The criterion now tests whether the underlying PAI data exists with
+// methodology references, not whether the developer has produced the
+// FMP-ready machine-readable file. PB produces the FMP-ready file as part
+// of the £85k engagement deliverable from whatever structured form the
+// developer provides (CSV, JSON, structured PDF appendix, HTML table).
+// All four forms qualify for `aligned` so long as data + methodology refs
+// are present.
+
+const STRUCTURED_DATA_FORMS = new Set<string>([
+  "csv",
+  "json",
+  "structured_pdf",
+  "structured_html",
+]);
 
 export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
   const pd = getArt9(ctx)?.pai_data;
@@ -315,7 +391,7 @@ export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
   if (pai7AbsentNearKba) {
     return {
       band: "not_aligned",
-      rationale_text: `PAI 7 (biodiversity) data is absent and the project is within 2km of a Key Biodiversity Area — under the v3.4 methodology this absence is a hard fail regardless of overall PAI coverage.`,
+      rationale_text: `PAI 7 (biodiversity) data is absent and the project is within 2km of a Key Biodiversity Area — this absence is a hard fail regardless of overall PAI coverage.`,
       numeric_value: { value: withValue, unit: `/${totalMaterial}`, label: "Material PAI coverage" },
     };
   }
@@ -326,14 +402,21 @@ export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
   const requiresExtraVerification = c3Weak;
   const meetsExtraVerification = thirdPartyVerified >= 9;
 
-  // Recency / machine-readable gates.
+  // Recency gate.
   const recencyOk =
     pd.data_recency_months === undefined || pd.data_recency_months <= 12;
   const recencyPartial =
     pd.data_recency_months !== undefined &&
     pd.data_recency_months > 12 &&
     pd.data_recency_months <= 18;
-  const machineReadable = pd.machine_readable_form === "csv" || pd.machine_readable_form === "json";
+  // v3.5 (F5): any structured form (csv, json, structured_pdf, structured_html)
+  // qualifies for aligned. Undefined form is treated as structured for the
+  // aligned-eligibility check — the criterion's job is to verify the data
+  // exists with methodology refs, not to police the developer-side
+  // delivery format.
+  const structuredForm =
+    pd.machine_readable_form === undefined ||
+    STRUCTURED_DATA_FORMS.has(pd.machine_readable_form);
 
   // Band synthesis.
   let band: SFDRBand;
@@ -345,14 +428,19 @@ export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
   } else if (methodologyRefMissing > 0) {
     band = "not_aligned";
     rationale = `${methodologyRefMissing} of the provided PAI data points lack methodology references and cannot be FMP-verified.`;
-  } else if (withValue === totalMaterial && recencyOk && machineReadable) {
+  } else if (withValue === totalMaterial && recencyOk && structuredForm) {
     // Candidate for aligned — verification gate decides.
     if (requiresExtraVerification && !meetsExtraVerification) {
       band = "partially_aligned";
-      rationale = `All 11 PAIs present with methodology; recent; machine-readable. But criterion 3 (entity Art 4 policy) is ${c3?.band ?? "missing"}; under v3.4 verification gate this requires ≥9 of 11 PAIs to be third-party-verified. Currently ${thirdPartyVerified}/11 third-party-verified — band caps at partially_aligned.`;
+      rationale = `All 11 PAIs present with methodology; recent; structured form provided. But criterion 3 (entity PAI policy) is ${c3?.band ?? "missing"}; under v3.5 verification gate this requires ≥9 of 11 PAIs to be third-party-verified. Currently ${thirdPartyVerified}/11 third-party-verified — band caps at partially_aligned.`;
     } else {
       band = "aligned";
-      rationale = `All 11 PAIs present with methodology, recent (≤12mo), machine-readable.${
+      const formNote =
+        pd.machine_readable_form === "structured_pdf" ||
+        pd.machine_readable_form === "structured_html"
+          ? ` Data delivered in structured ${pd.machine_readable_form === "structured_pdf" ? "PDF appendix" : "HTML appendix"} form; PB produces the FMP-ready machine-readable file as part of the engagement deliverable.`
+          : "";
+      rationale = `All 11 PAIs present with methodology, recent (≤12mo).${formNote}${
         requiresExtraVerification
           ? ` Verification gate cleared: ${thirdPartyVerified}/11 PAIs third-party-verified (criterion 3 weak — ≥9 required).`
           : " Criterion 3 aligned — no additional verification required."
@@ -364,9 +452,6 @@ export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
   } else if (recencyPartial) {
     band = "partially_aligned";
     rationale = `All 11 PAIs present but data recency is ${pd.data_recency_months} months (12–18 month window) — caps at partially_aligned.`;
-  } else if (!machineReadable) {
-    band = "partially_aligned";
-    rationale = `All 11 PAIs present but not delivered in machine-readable form (csv/json) — caps at partially_aligned.`;
   } else {
     band = "partially_aligned";
     rationale = `${withValue}/${totalMaterial} PAIs present; gating conditions partially met.`;
