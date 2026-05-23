@@ -462,3 +462,111 @@ describe("Criterion 4 — DNSH (sample bands)", () => {
     assert.equal(r.band, "not_aligned");
   });
 });
+
+describe("Criterion 4 — E3 cross-framework DNSH lookup", () => {
+  // Helper builds a minimal FrameworkResult for EU Tax 8.1 with the given
+  // dnsh verdicts. Only fields c4's reader touches are populated.
+  function euTaxFrameworkResult(
+    dnshVerdicts: Array<[string, "pass" | "partial" | "fail" | "data_missing" | "not_applicable"]>,
+  ): FrameworkResult {
+    return {
+      framework: "EU_TAXONOMY_CLIMATE",
+      framework_version: "Regulation_2021_2139_consolidated_2024",
+      framework_source_hash: "test-hash",
+      activity_id: "eu_tax_climate_8_1",
+      sc_results: [],
+      dnsh_results: dnshVerdicts.map(([id, v]) => ({
+        criterion_id: id,
+        verdict: v,
+        gap_summary: "",
+        evidence_refs: [],
+        scoring_logic_ref: `test.${id}.v1`,
+        scoring_logic_version: "v1",
+      })),
+      minimum_safeguards_verdict: "pass",
+      overall_verdict: "pass",
+      indicative_score: 100,
+    };
+  }
+
+  test("aligned when all EU Tax 8.1 DNSH pass or are not_applicable", () => {
+    const fwResults = new Map<string, FrameworkResult>([
+      [
+        "eu_tax_climate_8_1",
+        euTaxFrameworkResult([
+          ["dnsh_8_1_adaptation", "pass"],
+          ["dnsh_8_1_water", "pass"],
+          ["dnsh_8_1_circular_economy", "pass"],
+          ["dnsh_8_1_pollution", "not_applicable"],
+          ["dnsh_8_1_biodiversity", "not_applicable"],
+        ]),
+      ],
+    ]);
+    const r = art8_c4_dnsh(ctx({ framework_results: fwResults }));
+    assert.equal(r.band, "aligned");
+    assert.match(r.rationale_text, /cross-framework/i);
+  });
+
+  test("not_aligned when any EU Tax 8.1 DNSH fails (water = fail)", () => {
+    const fwResults = new Map<string, FrameworkResult>([
+      [
+        "eu_tax_climate_8_1",
+        euTaxFrameworkResult([
+          ["dnsh_8_1_adaptation", "pass"],
+          ["dnsh_8_1_water", "fail"],
+          ["dnsh_8_1_circular_economy", "pass"],
+        ]),
+      ],
+    ]);
+    const r = art8_c4_dnsh(ctx({ framework_results: fwResults }));
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /dnsh_8_1_water/);
+  });
+
+  test("partially_aligned when any EU Tax 8.1 DNSH is partial (and none fail)", () => {
+    const fwResults = new Map<string, FrameworkResult>([
+      [
+        "eu_tax_climate_8_1",
+        euTaxFrameworkResult([
+          ["dnsh_8_1_adaptation", "pass"],
+          ["dnsh_8_1_water", "partial"],
+          ["dnsh_8_1_circular_economy", "pass"],
+        ]),
+      ],
+    ]);
+    const r = art8_c4_dnsh(ctx({ framework_results: fwResults }));
+    assert.equal(r.band, "partially_aligned");
+    assert.match(r.rationale_text, /dnsh_8_1_water/);
+  });
+
+  test("insufficient_evidence references the specific missing DNSH input", () => {
+    // E3 plan: when any DNSH returns data_missing, the gap should name the
+    // missing input rather than emit the generic "no project-level DNSH
+    // evidence" message that pre-fix c4 produced.
+    const fwResults = new Map<string, FrameworkResult>([
+      [
+        "eu_tax_climate_8_1",
+        euTaxFrameworkResult([
+          ["dnsh_8_1_adaptation", "pass"],
+          ["dnsh_8_1_water", "pass"],
+          ["dnsh_8_1_circular_economy", "data_missing"],
+          ["dnsh_8_1_pollution", "not_applicable"],
+          ["dnsh_8_1_biodiversity", "not_applicable"],
+        ]),
+      ],
+    ]);
+    const r = art8_c4_dnsh(ctx({ framework_results: fwResults }));
+    assert.equal(r.band, "insufficient_evidence");
+    assert.match(r.rationale_text, /dnsh_8_1_circular_economy/);
+    assert.doesNotMatch(r.rationale_text, /No project-level DNSH evidence provided/);
+  });
+
+  test("falls back to SFDR-specific DNSH path when EU Tax is not loaded (regression)", () => {
+    // No framework_results entry → cross-framework returns null → existing
+    // project.sfdr.dnsh.evidence path runs. With evidence absent, the
+    // historical "No project-level DNSH evidence provided" message stays.
+    const r = art8_c4_dnsh(ctx({}));
+    assert.equal(r.band, "insufficient_evidence");
+    assert.match(r.rationale_text, /No project-level DNSH evidence provided/);
+  });
+});

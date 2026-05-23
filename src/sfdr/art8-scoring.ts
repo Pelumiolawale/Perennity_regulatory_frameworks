@@ -277,6 +277,15 @@ function resolveClimateZone(
 }
 
 export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
+  // Cross-framework DNSH read (E3). When EU Taxonomy Activity 8.1 is scored
+  // in the same run, its dnsh_results are the authoritative source for c4.
+  // SFDR's c4 doesn't need its own DNSH input shape when an activity-aligned
+  // framework has already evaluated the same evidence — depending on the SFDR
+  // side to re-collect the inputs would force the SPA to populate two
+  // redundant trees, and missing one would produce the bug E3 documents.
+  const crossFw = scoreDNSHFromCrossFramework(ctx);
+  if (crossFw) return crossFw;
+
   const dnsh = getProjectSFDR(ctx)?.dnsh?.evidence;
   if (!dnsh) return insufficient("No project-level DNSH evidence provided.");
   const perPai = new Map<number, PAIVerdict>();
@@ -332,6 +341,57 @@ export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
       extraRationale,
   };
 };
+
+// E3: read EU Taxonomy 8.1 dnsh_results (when available) and aggregate into
+// an SFDR c4 verdict per the v3.5 cross-framework decision logic. Returns
+// null when no activity-aligned framework was scored in this run, so the
+// caller can fall back to the SFDR-specific dnsh.evidence input path.
+function scoreDNSHFromCrossFramework(
+  ctx: SFDRScoringContext,
+): SFDRCriterionScore | null {
+  const euTax = ctx.framework_results.get("eu_tax_climate_8_1");
+  if (!euTax) return null;
+  const dnshResults = euTax.dnsh_results ?? [];
+  if (dnshResults.length === 0) return null;
+
+  const failed: string[] = [];
+  const partial: string[] = [];
+  const missing: string[] = [];
+  for (const r of dnshResults) {
+    if (r.verdict === "fail") failed.push(r.criterion_id);
+    else if (r.verdict === "partial") partial.push(r.criterion_id);
+    else if (r.verdict === "data_missing") missing.push(r.criterion_id);
+    // pass and not_applicable are treated as clearing the gate.
+  }
+
+  const summary =
+    `EU Taxonomy 8.1 DNSH cross-framework read: ` +
+    dnshResults.map((r) => `${r.criterion_id}=${r.verdict}`).join(", ") +
+    ".";
+
+  if (failed.length > 0) {
+    return {
+      band: "not_aligned",
+      rationale_text: `${summary} Failed DNSH criteria force SFDR c4 not_aligned: ${failed.join(", ")}.`,
+    };
+  }
+  if (partial.length > 0) {
+    return {
+      band: "partially_aligned",
+      rationale_text: `${summary} Partially-aligned DNSH criteria cap SFDR c4 at partially_aligned: ${partial.join(", ")}.`,
+    };
+  }
+  if (missing.length > 0) {
+    return {
+      band: "insufficient_evidence",
+      rationale_text: `${summary} Missing DNSH inputs prevent SFDR c4 alignment: ${missing.join(", ")}.`,
+    };
+  }
+  return {
+    band: "aligned",
+    rationale_text: `${summary} All criteria pass or are not_applicable; SFDR c4 aligned by cross-framework corroboration.`,
+  };
+}
 
 // Returns "meets_aligned_tier" if PUE clears the v3.5 PB-conservatism gate
 // for the project's climate zone; "below_aligned_tier" if PUE clears no_harm
