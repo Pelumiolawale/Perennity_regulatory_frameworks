@@ -50,6 +50,43 @@ function insufficient(rationale: string): SFDRCriterionScore {
   return { band: "insufficient_evidence", rationale_text: rationale };
 }
 
+// E5: label-aware rationale text. Criteria c1-c7 are shared between Art 8
+// and Art 9 (Art 9 funds inherit the Art 8 baseline per SFDR regulatory
+// design). Pre-E5, gap_summary text bare-referenced "Article 8" — which
+// surfaced in Art 9 PDFs and read as the wrong framework being scored.
+// These helpers route phrasing by ctx.framework_id; absence falls back to
+// Art 8 phrasing (the criteria's primary regime).
+function isArticle9(ctx: SFDRScoringContext): boolean {
+  return ctx.framework_id === "sfdr_v1_article_9";
+}
+
+function article8BaselineLabel(ctx: SFDRScoringContext): string {
+  return isArticle9(ctx)
+    ? "the Article 8 baseline standard that Article 9 products must also satisfy"
+    : "an Article 8 promotion claim";
+}
+
+function article8BaselineSpecificityRequirement(ctx: SFDRScoringContext): string {
+  return isArticle9(ctx)
+    ? "the Article 8 baseline specificity requirement that Article 9 products inherit"
+    : "Article 8's specificity requirement";
+}
+
+function noTaxonomyClaimRationale(ctx: SFDRScoringContext): string {
+  if (isArticle9(ctx)) {
+    return (
+      "Developer makes no Taxonomy alignment claim under Activity 8.1. Under SFDR Article 9, " +
+      "the SI-objective qualification (criterion 8) is the load-bearing contribution test; a " +
+      "separate Taxonomy alignment claim is one possible corroboration path but is not required. " +
+      "No corroboration required here."
+    );
+  }
+  return (
+    "Developer makes no Taxonomy alignment claim under Activity 8.1; this is permitted under " +
+    "SFDR Article 8 (light-green positioning). No corroboration required."
+  );
+}
+
 // -- Criterion 1: E/S characteristics promotion -----------------------------
 
 export const art8_c1_es_characteristics: SFDRScoringFn = (ctx) => {
@@ -74,7 +111,7 @@ export const art8_c1_es_characteristics: SFDRScoringFn = (ctx) => {
     rationale = `${quantified.length} quantified and ${chars.length - quantified.length} qualitative characteristic(s) disclosed; criterion not yet at the sector-material threshold for 'aligned'.`;
   } else {
     band = "not_aligned";
-    rationale = `Only ${chars.length} characteristic(s) disclosed, of which ${quantified.length} are quantified — insufficient specificity for an Article 8 promotion claim.`;
+    rationale = `Only ${chars.length} characteristic(s) disclosed, of which ${quantified.length} are quantified — insufficient specificity for ${article8BaselineLabel(ctx)}.`;
   }
   return {
     band,
@@ -541,7 +578,7 @@ export const art8_c5_pre_contractual: SFDRScoringFn = (ctx) => {
     return {
       band: "not_aligned",
       rationale_text:
-        "Cascade rule: criterion 1 (E/S characteristics promotion) is not_aligned, so pre-contractual disclosure cannot meet Article 8's specificity requirement regardless of other Annex II coverage.",
+        `Cascade rule: criterion 1 (E/S characteristics promotion) is not_aligned, so pre-contractual disclosure cannot meet ${article8BaselineSpecificityRequirement(ctx)} regardless of other Annex II coverage.`,
     };
   }
   let specificCount = 0;
@@ -590,12 +627,11 @@ export const art8_c5_pre_contractual: SFDRScoringFn = (ctx) => {
 export const art8_c6_taxonomy: SFDRScoringFn = (ctx) => {
   const claim = getProjectSFDR(ctx)?.taxonomy_claim;
   if (!claim) {
+    const noClaimRationale = noTaxonomyClaimRationale(ctx);
     return {
       band: "not_applicable",
-      rationale_text:
-        "Developer makes no Taxonomy alignment claim under Activity 8.1; this is permitted under SFDR Article 8 (light-green positioning). No corroboration required.",
-      not_applicable_rationale:
-        "Developer makes no Taxonomy alignment claim under Activity 8.1; this is permitted under SFDR Article 8 (light-green positioning).",
+      rationale_text: noClaimRationale,
+      not_applicable_rationale: noClaimRationale,
     };
   }
   const euTax = ctx.framework_results.get("eu_tax_climate_8_1");

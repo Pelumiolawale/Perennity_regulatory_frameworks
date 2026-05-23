@@ -47,12 +47,14 @@ function ctx(opts: {
   entity?: (Partial<EntityInput> & { sfdr?: EntitySFDRInputs }) | undefined;
   framework_results?: ReadonlyMap<string, FrameworkResult>;
   dependencies?: Map<string, SFDRCriterionScore>;
+  framework_id?: string;
 }): SFDRScoringContext {
   return {
     project: { ...PROJECT_BASE, ...opts.project } as ProjectInput,
     entity: opts.entity ? ({ ...ENTITY_BASE, ...opts.entity } as EntityInput) : undefined,
     framework_results: opts.framework_results ?? new Map(),
     dependencies: opts.dependencies ?? new Map(),
+    framework_id: opts.framework_id,
   };
 }
 
@@ -568,5 +570,91 @@ describe("Criterion 4 — E3 cross-framework DNSH lookup", () => {
     const r = art8_c4_dnsh(ctx({}));
     assert.equal(r.band, "insufficient_evidence");
     assert.match(r.rationale_text, /No project-level DNSH evidence provided/);
+  });
+});
+
+describe("E5 — label-aware rationale text (c1, c5, c6 framing under Art 8 vs Art 9)", () => {
+  // Minimal Art-8/9 inputs that drive c1 down the not_aligned path so the
+  // gap_summary template fires. One characteristic, not quantified.
+  const C1_FAILING_INPUTS = {
+    project: {
+      sfdr: {
+        disclosures: {
+          es_characteristics: [
+            { name: "Generic ESG focus", category: "environmental" as const },
+          ],
+        },
+      } as ProjectSFDRInputs,
+    },
+  };
+
+  test("c1 under Art 8: rationale mentions 'Article 8 promotion claim'", () => {
+    const r = art8_c1_es_characteristics(
+      ctx({ ...C1_FAILING_INPUTS, framework_id: "sfdr_v1_article_8" }),
+    );
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /Article 8 promotion claim/);
+  });
+
+  test("c1 under Art 9: rationale reframes as 'Article 8 baseline ... Article 9 products'", () => {
+    const r = art8_c1_es_characteristics(
+      ctx({ ...C1_FAILING_INPUTS, framework_id: "sfdr_v1_article_9" }),
+    );
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /Article 8 baseline/);
+    assert.match(r.rationale_text, /Article 9 products/);
+    // The unqualified "an Article 8 promotion claim" string from the Art 8
+    // phrasing must not appear under Art 9.
+    assert.doesNotMatch(r.rationale_text, /an Article 8 promotion claim/);
+  });
+
+  test("c1 with no framework_id: defaults to Art 8 phrasing (back-compat)", () => {
+    const r = art8_c1_es_characteristics(ctx(C1_FAILING_INPUTS));
+    assert.match(r.rationale_text, /Article 8 promotion claim/);
+  });
+
+  // c5 cascade requires c1 in dependencies + Annex II coverage present.
+  function c5CascadeCtx(framework_id?: string) {
+    const deps = new Map<string, SFDRCriterionScore>([
+      ["sfdr_v1_e_s_characteristics_promotion", { band: "not_aligned", rationale_text: "x" }],
+    ]);
+    return ctx({
+      entity: {
+        sfdr: {
+          disclosures: { annex_ii_coverage: { "1": { coverage: "covered_specific" } } },
+        } as EntitySFDRInputs,
+      },
+      dependencies: deps,
+      framework_id,
+    });
+  }
+
+  test("c5 cascade under Art 8: rationale mentions \"Article 8's specificity requirement\"", () => {
+    const r = art8_c5_pre_contractual(c5CascadeCtx("sfdr_v1_article_8"));
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /Article 8's specificity requirement/);
+  });
+
+  test("c5 cascade under Art 9: rationale reframes as 'Article 9 products inherit'", () => {
+    const r = art8_c5_pre_contractual(c5CascadeCtx("sfdr_v1_article_9"));
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /Article 9 products inherit/);
+    assert.doesNotMatch(r.rationale_text, /Article 8's specificity requirement/);
+  });
+
+  test("c6 no-claim under Art 8: rationale mentions 'light-green positioning'", () => {
+    // No taxonomy_claim → not_applicable + Art 8 framing
+    const r = art8_c6_taxonomy(ctx({ framework_id: "sfdr_v1_article_8" }));
+    assert.equal(r.band, "not_applicable");
+    assert.match(r.rationale_text, /light-green positioning/);
+  });
+
+  test("c6 no-claim under Art 9: rationale reframes as 'SI-objective ... criterion 8' (not light-green)", () => {
+    const r = art8_c6_taxonomy(ctx({ framework_id: "sfdr_v1_article_9" }));
+    assert.equal(r.band, "not_applicable");
+    assert.match(r.rationale_text, /SI-objective qualification/);
+    assert.match(r.rationale_text, /criterion 8/);
+    // Article 9 is explicitly NOT light-green; that framing must not appear.
+    assert.doesNotMatch(r.rationale_text, /light-green positioning/);
   });
 });

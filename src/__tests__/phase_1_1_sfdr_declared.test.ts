@@ -178,6 +178,18 @@ describe("Engine.run with SFDR Art 9 framework (v0.5.0-alpha.4 — fully scored 
       "not_applicable",
       "E4: scored product_label framework must aggregate sc_results into a real verdict",
     );
+
+    // E5: framework_id flows through Engine.run → scoreSFDRCriteria so c6
+    // (taxonomy_alignment_disclosure) under Art 9 produces the Art-9-aware
+    // rationale (SI-objective machinery) rather than the Art 8 "light-green
+    // positioning" phrasing that would mislead an Art 9 reader.
+    const c6 = fr.sc_results.find(
+      (r) => r.criterion_id === "sfdr_v1_taxonomy_alignment_disclosure",
+    );
+    assert.ok(c6, "c6 must surface in Art 9 sc_results");
+    assert.equal(c6.verdict, "not_applicable");
+    assert.match(c6.rationale_text!, /SI-objective qualification/);
+    assert.doesNotMatch(c6.rationale_text!, /light-green positioning/);
   });
 });
 

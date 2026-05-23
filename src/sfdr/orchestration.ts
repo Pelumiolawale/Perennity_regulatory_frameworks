@@ -29,6 +29,13 @@ export interface SFDRScoringContext {
   // ensures depends_on_framework entries are scored upstream and surfaces
   // them here.
   framework_results: ReadonlyMap<string, FrameworkResult>;
+  // E5: framework_id being scored (e.g. "sfdr_v1_article_8" or
+  // "sfdr_v1_article_9"). Lets criteria shared between Art 8 and Art 9
+  // (c1-c7) emit label-aware rationale text rather than baking the
+  // "Article 8" framing into rationale that surfaces in Art 9 PDFs.
+  // Optional for backward compat with existing test fixtures; absence
+  // is treated as Art 8 (the default phrasing for shared criteria).
+  framework_id?: string;
 }
 
 export type SFDRScoringFn = (ctx: SFDRScoringContext) => SFDRCriterionScore;
@@ -95,7 +102,12 @@ export function validateCrossFrameworkDeps(
 export function scoreSFDRCriteria(
   criteria: SharedCriterion[],
   registry: ReadonlyMap<string, SFDRScoringFn>,
-  ctx: { project: ProjectInput; entity?: EntityInput; framework_results: ReadonlyMap<string, FrameworkResult> },
+  ctx: {
+    project: ProjectInput;
+    entity?: EntityInput;
+    framework_results: ReadonlyMap<string, FrameworkResult>;
+    framework_id?: string;
+  },
 ): CriterionResult[] {
   const sorted = topologicalSort(criteria);
   const scored = new Map<string, SFDRCriterionScore>();
@@ -132,6 +144,7 @@ export function scoreSFDRCriteria(
           entity: ctx.entity,
           dependencies: scored,
           framework_results: ctx.framework_results,
+          framework_id: ctx.framework_id,
         });
       }
     }

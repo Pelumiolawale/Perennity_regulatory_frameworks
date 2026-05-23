@@ -156,6 +156,7 @@ export class DeterministicEngine implements Engine {
       project: projectInput,
       entity: entityInput,
       framework_results: fwResultsById,
+      framework_id: framework.id,
     });
     // Warn if any criterion is still not_implemented. As of v0.5.0-alpha.4
     // (commit 1.3 / methodology v3.4) all 10 SFDR criteria — Art 8 (1–7)
