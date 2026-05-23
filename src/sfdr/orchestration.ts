@@ -149,7 +149,7 @@ export function scoreSFDRCriteria(
       }
     }
     scored.set(c.criterion_id, score);
-    out.push(scoreToResult(c.criterion_id, score));
+    out.push(scoreToResult(c.criterion_id, score, ctx.framework_id));
   }
 
   return out;
@@ -178,7 +178,11 @@ export function aggregateProductLabelVerdict(
   return "aligned";
 }
 
-function scoreToResult(criterion_id: string, s: SFDRCriterionScore): CriterionResult {
+function scoreToResult(
+  criterion_id: string,
+  s: SFDRCriterionScore,
+  framework_id: string | undefined,
+): CriterionResult {
   const result: CriterionResult = {
     criterion_id,
     verdict: bandToVerdict(s.band),
@@ -196,6 +200,12 @@ function scoreToResult(criterion_id: string, s: SFDRCriterionScore): CriterionRe
   }
   if (s.numeric_value !== undefined) {
     result.numeric_value = s.numeric_value;
+  }
+  // E5 follow-up: stamp the framework under which this criterion was scored
+  // so downstream consumers (SPA phrase tables, render contract) can route
+  // label-aware rendering without re-deriving from the parent FrameworkResult.
+  if (framework_id !== undefined) {
+    result.applies_under = framework_id;
   }
   return result;
 }

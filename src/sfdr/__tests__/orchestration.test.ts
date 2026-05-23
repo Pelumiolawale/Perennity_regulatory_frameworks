@@ -188,6 +188,52 @@ describe("scoreSFDRCriteria — entity-axis short-circuit guard", () => {
     assert.equal(spy.called, true);
     assert.equal(results[0].verdict, "aligned");
   });
+
+  // E5 follow-up: applies_under is stamped on every emitted CriterionResult
+  // so downstream consumers (SPA phrase tables, render contract) can route
+  // label-aware narrative without re-deriving framework from the parent.
+  test("applies_under is set from ctx.framework_id when supplied", () => {
+    const c = crit("sfdr_v1_project_only", [], ["project"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+      framework_id: "sfdr_v1_article_9",
+    });
+    assert.equal(results[0].applies_under, "sfdr_v1_article_9");
+  });
+
+  test("applies_under is omitted when framework_id is not provided", () => {
+    const c = crit("sfdr_v1_project_only", [], ["project"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+    });
+    assert.equal(results[0].applies_under, undefined);
+  });
+
+  test("applies_under is set even on entity-axis short-circuit path", () => {
+    // Sanity check: the short-circuit guard path also routes through
+    // scoreToResult, so applies_under must still be stamped even when the
+    // scoring function never runs.
+    const c = crit("sfdr_v1_entity_only", [], ["entity"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+      framework_id: "sfdr_v1_article_8",
+    });
+    assert.equal(spy.called, false);
+    assert.equal(results[0].verdict, "insufficient_evidence");
+    assert.equal(results[0].applies_under, "sfdr_v1_article_8");
+  });
 });
 
 describe("aggregateProductLabelVerdict — E4 framework rollup", () => {

@@ -221,6 +221,15 @@ export interface CriterionResult {
   rationale_text?: string;
   not_applicable_rationale?: string;
   numeric_value?: { value: number; unit: string; label: string };
+
+  // v0.6.0 (E5 follow-up): framework id under which this criterion's
+  // verdict was produced (e.g. "sfdr_v1_article_8" / "sfdr_v1_article_9").
+  // Populated by the SFDR orchestrator from SFDRScoringContext.framework_id;
+  // ignored by activity-aligned scoring. Lets downstream consumers (SPA
+  // phrase tables, render contract) route label-aware rendering by
+  // criterion without re-deriving the framework from the parent
+  // FrameworkResult.
+  applies_under?: string;
 }
 
 export interface FrameworkResult {

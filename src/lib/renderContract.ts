@@ -71,6 +71,12 @@ export interface CriterionVerdict {
   inputs_used: Record<string, unknown>;
   numeric_value?: { value: number; unit: string; label: string };
   not_applicable_rationale?: string;
+  // v0.6.0 (E5 follow-up): framework id under which this verdict was
+  // produced (e.g. "sfdr_v1_article_8" / "sfdr_v1_article_9"). Forwarded
+  // from CriterionResult.applies_under. Consumers route label-aware
+  // narrative rendering by branching on this field — see the SPA's
+  // snapshotPhrases.js article9_defaults pattern.
+  applies_under?: string;
 }
 
 // Evidence reference as it appears in the consolidated index. The structure
@@ -176,6 +182,7 @@ function toCriterionVerdict(cr: CriterionResult): CriterionVerdict {
   if (cr.not_applicable_rationale !== undefined) {
     out.not_applicable_rationale = cr.not_applicable_rationale;
   }
+  if (cr.applies_under !== undefined) out.applies_under = cr.applies_under;
   return out;
 }
 

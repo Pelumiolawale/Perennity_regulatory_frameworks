@@ -179,4 +179,33 @@ describe("RenderContract — invariants", () => {
     assert.equal(contract.pai_data_file.schema_source, "SFDR_2022_1288_Annex_I_Table_1");
     assert.equal(contract.pai_data_file.rows.length, 10);
   });
+
+  // E5 follow-up: applies_under flows engine → render contract so the SPA
+  // can route label-aware narrative without re-deriving the framework.
+  test("applies_under flows from CriterionResult to CriterionVerdict (Art 8 only)", async () => {
+    const run = await runArt8Only();
+    const contract = buildRenderContract(run);
+    const art8 = contract.framework_findings[0];
+    for (const c of art8.criteria) {
+      assert.equal(
+        c.applies_under,
+        "sfdr_v1_article_8",
+        `criterion ${c.criterion_id} must carry applies_under="sfdr_v1_article_8"`,
+      );
+    }
+  });
+
+  test("applies_under is per-finding correct when Art 8 and Art 9 both scored", async () => {
+    const run = await runArt8AndArt9();
+    const contract = buildRenderContract(run);
+    const art8 = contract.framework_findings.find((f) => f.framework === "sfdr_art8");
+    const art9 = contract.framework_findings.find((f) => f.framework === "sfdr_art9");
+    assert.ok(art8 && art9);
+    for (const c of art8.criteria) {
+      assert.equal(c.applies_under, "sfdr_v1_article_8");
+    }
+    for (const c of art9.criteria) {
+      assert.equal(c.applies_under, "sfdr_v1_article_9");
+    }
+  });
 });
