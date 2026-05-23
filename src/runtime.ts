@@ -23,7 +23,11 @@ import type {
 import type { EntityInput, RunInput } from "./inputs";
 import { getLogic } from "./logic/registry";
 import type { LogicInput } from "./logic/types";
-import { scoreSFDRCriteria, SFDR_REGISTRY } from "./sfdr";
+import {
+  scoreSFDRCriteria,
+  SFDR_REGISTRY,
+  aggregateProductLabelVerdict,
+} from "./sfdr";
 import { BUNDLED_SFDR_CRITERIA } from "./sfdr/bundled";
 
 export interface EngineDeps {
@@ -174,7 +178,13 @@ export class DeterministicEngine implements Engine {
       safeguards_results: [],
       methodology_results: [],
       minimum_safeguards_verdict: "not_applicable",
-      overall_verdict: "not_applicable",
+      // E4: aggregate sc_results into a framework-level verdict via severity
+      // rank rather than hardcoding "not_applicable". indicative_score stays
+      // 0 because SFDR weights are null pending the calibration commit; the
+      // snapshot renderer's indicative-score aggregator filters product_label
+      // frameworks out so this 0 doesn't drag down the activity-aligned
+      // average.
+      overall_verdict: aggregateProductLabelVerdict(sc_results),
       indicative_score: 0,
       archetype: "product_label",
     };

@@ -8,8 +8,10 @@ import {
   topologicalSort,
   validateCrossFrameworkDeps,
   scoreSFDRCriteria,
+  aggregateProductLabelVerdict,
   type SFDRScoringFn,
 } from "../orchestration";
+import type { CriterionResult } from "../../engine";
 import type {
   CriterionAxis,
   SharedCriterion,
@@ -185,5 +187,114 @@ describe("scoreSFDRCriteria — entity-axis short-circuit guard", () => {
     });
     assert.equal(spy.called, true);
     assert.equal(results[0].verdict, "aligned");
+  });
+});
+
+describe("aggregateProductLabelVerdict — E4 framework rollup", () => {
+  function res(
+    verdict: CriterionResult["verdict"],
+    extra: Partial<CriterionResult> = {},
+  ): CriterionResult {
+    return {
+      criterion_id: `c_${verdict}`,
+      verdict,
+      gap_summary: "",
+      evidence_refs: [],
+      scoring_logic_ref: "test.v1",
+      scoring_logic_version: "v1",
+      ...extra,
+    };
+  }
+
+  test("all aligned → aligned", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([res("aligned"), res("aligned")]),
+      "aligned",
+    );
+  });
+
+  test("aligned + not_applicable → aligned", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([res("aligned"), res("not_applicable")]),
+      "aligned",
+    );
+  });
+
+  test("any not_aligned → not_aligned (severity wins)", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([
+        res("aligned"),
+        res("partially_aligned"),
+        res("not_aligned"),
+        res("insufficient_evidence"),
+      ]),
+      "not_aligned",
+    );
+  });
+
+  test("any partially_aligned (no not_aligned) → partially_aligned", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([
+        res("aligned"),
+        res("partially_aligned"),
+        res("insufficient_evidence"),
+      ]),
+      "partially_aligned",
+    );
+  });
+
+  test("any insufficient_evidence (no fails or partials) → insufficient_evidence", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([
+        res("aligned"),
+        res("insufficient_evidence"),
+        res("not_applicable"),
+      ]),
+      "insufficient_evidence",
+    );
+  });
+
+  test("all not_applicable → not_applicable", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([res("not_applicable"), res("not_applicable")]),
+      "not_applicable",
+    );
+  });
+
+  test("empty input → not_applicable", () => {
+    assert.equal(aggregateProductLabelVerdict([]), "not_applicable");
+  });
+
+  test("not_implemented criteria are skipped from aggregation", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([
+        res("aligned"),
+        res("data_missing", { scoring_status: "not_implemented" }),
+      ]),
+      "aligned",
+    );
+  });
+
+  test("all not_implemented → not_applicable (no signal)", () => {
+    assert.equal(
+      aggregateProductLabelVerdict([
+        res("data_missing", { scoring_status: "not_implemented" }),
+        res("data_missing", { scoring_status: "not_implemented" }),
+      ]),
+      "not_applicable",
+    );
+  });
+
+  test("plan example: 7 insufficient_evidence + 2 not_aligned + 1 not_applicable → not_aligned", () => {
+    // Per the engine-bugs follow-up plan: with 7 of 10 SFDR Art 9 criteria
+    // returning insufficient_evidence, 2 returning not_aligned, 1 returning
+    // not_applicable — overall_verdict should be not_aligned.
+    const results = [
+      ...Array(7).fill(null).map(() => res("insufficient_evidence")),
+      res("not_aligned"),
+      res("not_aligned"),
+      res("not_applicable"),
+    ];
+    assert.equal(aggregateProductLabelVerdict(results), "not_aligned");
   });
 });

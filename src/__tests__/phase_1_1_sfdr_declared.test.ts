@@ -166,6 +166,18 @@ describe("Engine.run with SFDR Art 9 framework (v0.5.0-alpha.4 — fully scored 
     assert.ok(c8, "si_objective_qualification cell must surface in Art 9 snapshot");
     assert.equal(c8.scoring_status, undefined);
     assert.ok(c8.rationale_text);
+
+    // E4: framework-level overall_verdict is no longer the hardcoded
+    // "not_applicable" — it now reflects the severity-rank aggregate of
+    // sc_results. The minimal-project input produces a mix of bands but
+    // certainly nothing all-not_applicable, so the rollup must surface a
+    // real verdict (anything except not_applicable is acceptable for this
+    // smoke test; finer cases live in the aggregator unit tests).
+    assert.notEqual(
+      fr.overall_verdict,
+      "not_applicable",
+      "E4: scored product_label framework must aggregate sc_results into a real verdict",
+    );
   });
 });
 

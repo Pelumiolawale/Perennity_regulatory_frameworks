@@ -142,6 +142,29 @@ export function scoreSFDRCriteria(
   return out;
 }
 
+// Aggregate a product_label framework's criterion verdicts into a single
+// framework-level verdict (E4). Severity-rank cascade: any not_aligned wins
+// over partially_aligned wins over insufficient_evidence wins over aligned
+// wins over not_applicable. not_implemented criteria carry no signal and
+// are skipped (an all-not_implemented framework rolls up to not_applicable).
+//
+// This is a structural rule, not weighted aggregation — SFDR weights stay
+// null pending the post-Phase-1 calibration commit. The aggregate replaces
+// the hardcoded "not_applicable" that made the Frameworks Applied narrative
+// claim Art 9 was N/A even when 10 criteria had been scored.
+export function aggregateProductLabelVerdict(
+  results: CriterionResult[],
+): CriterionResult["verdict"] {
+  const scored = results.filter((r) => r.scoring_status !== "not_implemented");
+  if (scored.length === 0) return "not_applicable";
+  const verdicts = scored.map((r) => r.verdict);
+  if (verdicts.includes("not_aligned")) return "not_aligned";
+  if (verdicts.includes("partially_aligned")) return "partially_aligned";
+  if (verdicts.includes("insufficient_evidence")) return "insufficient_evidence";
+  if (verdicts.every((v) => v === "not_applicable")) return "not_applicable";
+  return "aligned";
+}
+
 function scoreToResult(criterion_id: string, s: SFDRCriterionScore): CriterionResult {
   const result: CriterionResult = {
     criterion_id,

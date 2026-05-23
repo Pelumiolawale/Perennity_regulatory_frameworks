@@ -32,6 +32,7 @@ export {
   scoreSFDRCriteria,
   topologicalSort,
   validateCrossFrameworkDeps,
+  aggregateProductLabelVerdict,
 } from "./orchestration";
 export type { SFDRScoringFn, SFDRScoringContext } from "./orchestration";
 

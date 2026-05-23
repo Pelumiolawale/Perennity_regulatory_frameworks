@@ -195,7 +195,15 @@ export class SnapshotRenderer implements Renderer<SnapshotOutput> {
 }
 
 function aggregateIndicativeScore(frs: FrameworkResult[]): number {
-  const counted = frs.filter((fr) => fr.overall_verdict !== "not_applicable");
+  // E4 defensive: product_label frameworks (SFDR) now carry a real
+  // overall_verdict from aggregation, but their indicative_score stays 0
+  // because SFDR weights are null pending calibration. Excluding them here
+  // prevents the 0 from dragging down the activity-aligned average.
+  const counted = frs.filter(
+    (fr) =>
+      fr.overall_verdict !== "not_applicable" &&
+      fr.archetype !== "product_label",
+  );
   if (counted.length === 0) return 0;
   return Math.round(
     counted.reduce((s, fr) => s + fr.indicative_score, 0) / counted.length,
@@ -249,7 +257,15 @@ function collapseSafeguardsVerdict(v: Verdict): "pass" | "partial" | "fail" | "d
 }
 
 function buildSafeguardsCell(frs: FrameworkResult[]): HeatmapCell | null {
-  const fr = frs.find((f) => f.overall_verdict !== "not_applicable");
+  // E4 defensive: the safeguards cell sources from an activity-aligned
+  // framework (EU Tax Article 18). product_label frameworks (SFDR) have
+  // empty safeguards_results and now carry a non-NA overall_verdict, so
+  // filter by archetype to avoid picking SFDR and emitting an empty cell.
+  const fr = frs.find(
+    (f) =>
+      f.overall_verdict !== "not_applicable" &&
+      f.archetype !== "product_label",
+  );
   if (!fr) return null;
   const rollup = (fr.safeguards_results ?? []).find((r) => r.criterion_id === "minimum_safeguards");
   return {

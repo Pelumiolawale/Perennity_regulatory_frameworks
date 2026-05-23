@@ -213,3 +213,81 @@ describe("SnapshotRenderer — minimum_safeguards heatmap cell", () => {
     assert.equal(bribery?.verdict, "fail");
   });
 });
+
+describe("SnapshotRenderer — E4 defensive filters for product_label frameworks", () => {
+  function makeMultiRun(frs: FrameworkResult[]): EngineRun {
+    return {
+      run_id: "r1",
+      run_timestamp: "2026-05-23T00:00:00Z",
+      methodology_version: "v3.5",
+      engine_commit_sha: "abc",
+      knowledge_base_hash: "sha256:" + "0".repeat(64),
+      project_input: {
+        project_id: "p1",
+        intake_timestamp: "2026-05-23T00:00:00Z",
+        facility_type: "hyperscale",
+        jurisdiction: "DE",
+        facility_status: "operational",
+        data_points: {},
+        evidence_documents: [],
+      },
+      framework_results: frs,
+      gap_list: [],
+    };
+  }
+
+  const euTaxResult: FrameworkResult = {
+    framework: "EU_TAXONOMY_CLIMATE",
+    framework_version: "v1",
+    framework_source_hash: "sha256:" + "1".repeat(64),
+    activity_id: "eu_tax_climate_8_1",
+    sc_results: [],
+    dnsh_results: [],
+    minimum_safeguards_verdict: "pass",
+    overall_verdict: "pass",
+    indicative_score: 80,
+  };
+
+  const sfdrResult: FrameworkResult = {
+    framework: "SFDR",
+    framework_version: "v1",
+    framework_source_hash: "sha256:" + "2".repeat(64),
+    activity_id: "sfdr_v1_article_9",
+    sc_results: [],
+    dnsh_results: [],
+    safeguards_results: [],
+    minimum_safeguards_verdict: "not_applicable",
+    overall_verdict: "aligned", // E4: real verdict, not hardcoded NA
+    indicative_score: 0, // SFDR weights null pending calibration
+    archetype: "product_label",
+  };
+
+  test("indicative_score ignores product_label frameworks (SFDR score=0 does not drag down EU Tax 80)", async () => {
+    const s = await renderer.render(makeMultiRun([euTaxResult, sfdrResult]));
+    // Pre-E4 defensive change, SFDR was always overall_verdict=not_applicable
+    // and excluded by the existing not_applicable filter. After E4, SFDR
+    // carries a real verdict — the archetype filter must keep it out of
+    // the indicative_score average. Otherwise (80 + 0) / 2 = 40.
+    assert.equal(s.indicative_score, 80);
+    assert.equal(s.indicative_band, "Green");
+  });
+
+  test("safeguards cell sources from activity_aligned framework, not product_label", async () => {
+    // SFDR-only run: no activity_aligned framework loaded. Pre-E4 defensive,
+    // SFDR was overall_verdict=not_applicable so buildSafeguardsCell's
+    // .find returned undefined → cell omitted (correct behaviour). After E4,
+    // SFDR carries overall_verdict="aligned"; without the archetype filter
+    // it would be picked up and emit a bogus safeguards cell from empty
+    // safeguards_results.
+    const s = await renderer.render(makeMultiRun([sfdrResult]));
+    const sgCell = s.heatmap.find((c) => c.framework === "minimum_safeguards");
+    assert.equal(sgCell, undefined);
+  });
+
+  test("safeguards cell still emits when activity_aligned framework is present alongside product_label", async () => {
+    const s = await renderer.render(makeMultiRun([euTaxResult, sfdrResult]));
+    const sgCell = s.heatmap.find((c) => c.framework === "minimum_safeguards");
+    assert.ok(sgCell, "EU Tax should drive the safeguards cell");
+    assert.equal(sgCell.verdict, "pass");
+  });
+});
