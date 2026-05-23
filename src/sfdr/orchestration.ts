@@ -112,10 +112,16 @@ export function scoreSFDRCriteria(
         rationale_text: `Scoring for "${c.criterion_id}" is not yet implemented. Scheduled for Phase 1 commit 1.3 (Article 9 criteria).`,
       };
     } else {
-      // Entity-required check: if the criterion's axes include "entity" but
-      // ctx.entity is undefined, emit insufficient_evidence rather than
-      // letting the scoring function crash on undefined access.
-      if (c.axes.includes("entity") && ctx.entity === undefined) {
+      // Short-circuit guard: only fire when the criterion has NO axis from
+      // which it can read data. ProjectInput is always present (required by
+      // Engine.run), so any criterion that declares "project" is satisfiable
+      // even when EntityInput is absent. Mixed-axis criteria (e.g. c9, c10
+      // declare ["project", "entity"]) read project-level data primarily and
+      // handle entity absence themselves — they must pass through to their
+      // scoring function. Only entity-only criteria short-circuit here.
+      const includesProject = c.axes.includes("project");
+      const includesEntity = c.axes.includes("entity");
+      if (includesEntity && !includesProject && ctx.entity === undefined) {
         score = {
           band: "insufficient_evidence",
           rationale_text: `Criterion "${c.criterion_id}" reads entity-level inputs but no EntityInput was supplied to Engine.run.`,

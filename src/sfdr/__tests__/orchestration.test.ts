@@ -7,16 +7,26 @@ import assert from "node:assert/strict";
 import {
   topologicalSort,
   validateCrossFrameworkDeps,
+  scoreSFDRCriteria,
+  type SFDRScoringFn,
 } from "../orchestration";
-import type { SharedCriterion } from "../../knowledge/criterion-library";
+import type {
+  CriterionAxis,
+  SharedCriterion,
+} from "../../knowledge/criterion-library";
+import type { ProjectInput, FrameworkResult } from "../../engine";
 
-function crit(id: string, depends_on: string[] = []): SharedCriterion {
+function crit(
+  id: string,
+  depends_on: string[] = [],
+  axes: CriterionAxis[] = ["project"],
+): SharedCriterion {
   return {
     criterion_id: id,
     name: id,
     regime: "sfdr_v1",
     regulatory_anchors: [{ regulation: "Test", celex: "X", article: "Y" }],
-    axes: ["project"],
+    axes,
     applies_to: ["test_fw"],
     scoring_status: "implemented",
     methodology_version_introduced: "v3.3",
@@ -24,6 +34,9 @@ function crit(id: string, depends_on: string[] = []): SharedCriterion {
     depends_on,
   };
 }
+
+const STUB_PROJECT = {} as unknown as ProjectInput;
+const NO_FW_RESULTS: ReadonlyMap<string, FrameworkResult> = new Map();
 
 describe("topologicalSort", () => {
   test("orders dependencies before dependents", () => {
@@ -78,5 +91,99 @@ describe("validateCrossFrameworkDeps", () => {
       assert.equal(result.errors.length, 1);
       assert.match(result.errors[0], /does_not_exist/);
     }
+  });
+});
+
+describe("scoreSFDRCriteria — entity-axis short-circuit guard", () => {
+  // Tracks whether the scoring function was actually invoked. The guard's
+  // job is to gate the call; the regression these tests protect against is
+  // the v0.5.0 bug where mixed-axis criteria (project + entity) were
+  // short-circuited and their scoring functions never ran.
+  function spyFn(): { fn: SFDRScoringFn; called: boolean } {
+    const state = { called: false };
+    const fn: SFDRScoringFn = () => {
+      state.called = true;
+      return { band: "aligned", rationale_text: "spy scored" };
+    };
+    return {
+      fn,
+      get called() {
+        return state.called;
+      },
+    } as { fn: SFDRScoringFn; called: boolean };
+  }
+
+  test("entity-only criterion short-circuits when ctx.entity is missing", () => {
+    const c = crit("sfdr_v1_entity_only", [], ["entity"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+    });
+    assert.equal(spy.called, false);
+    assert.equal(results[0].verdict, "insufficient_evidence");
+    assert.match(results[0].rationale_text!, /no EntityInput was supplied/);
+  });
+
+  test("entity-only criterion runs when ctx.entity is provided", () => {
+    const c = crit("sfdr_v1_entity_only", [], ["entity"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: {} as never,
+      framework_results: NO_FW_RESULTS,
+    });
+    assert.equal(spy.called, true);
+    assert.equal(results[0].verdict, "aligned");
+  });
+
+  test("E1 regression: project_pai_data_provision (axes: project+entity) runs when entity is missing", () => {
+    // Mirrors the real c10 criterion shape — axes ["project", "entity"] —
+    // and proves the v0.5.0 guard no longer short-circuits this criterion.
+    // The scoring function for c10 reads project.sfdr.art9.pai_data; it
+    // never touches ctx.entity. Pre-fix, the orchestrator returned
+    // insufficient_evidence with "no EntityInput was supplied" before the
+    // function got a chance to read its project-level inputs.
+    const c = crit("sfdr_v1_project_pai_data_provision", [], ["project", "entity"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+    });
+    assert.equal(spy.called, true);
+    assert.equal(results[0].verdict, "aligned");
+    assert.doesNotMatch(results[0].rationale_text!, /no EntityInput was supplied/);
+  });
+
+  test("E2 regression: si_eligibility_evidence_pack (axes: project+entity) runs when entity is missing", () => {
+    const c = crit("sfdr_v1_si_eligibility_evidence_pack", [], ["project", "entity"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+    });
+    assert.equal(spy.called, true);
+    assert.equal(results[0].verdict, "aligned");
+    assert.doesNotMatch(results[0].rationale_text!, /no EntityInput was supplied/);
+  });
+
+  test("project-only criterion always runs (regression)", () => {
+    const c = crit("sfdr_v1_project_only", [], ["project"]);
+    const spy = spyFn();
+    const registry = new Map([[c.criterion_id, spy.fn]]);
+    const results = scoreSFDRCriteria([c], registry, {
+      project: STUB_PROJECT,
+      entity: undefined,
+      framework_results: NO_FW_RESULTS,
+    });
+    assert.equal(spy.called, true);
+    assert.equal(results[0].verdict, "aligned");
   });
 });
