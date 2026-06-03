@@ -209,3 +209,99 @@ describe("RenderContract — invariants", () => {
     }
   });
 });
+
+// v0.6.1 — UK SDR framework findings flow through the contract. Pre-v0.6.1
+// the contract filtered to SFDR only; UK SDR engagements emitted empty
+// framework_findings, leaving the SPA's paid Report with no UK SDR content
+// to render.
+describe("RenderContract — UK SDR (v0.6.1)", () => {
+  async function runUkSdrLabel(
+    frameworkId: "uk_sdr_focus" | "uk_sdr_improvers" | "uk_sdr_impact",
+    expectedCriteriaCount: number,
+  ): Promise<EngineRun> {
+    const kb = await loadKnowledgeBase({
+      rootDir: path.resolve(process.cwd(), "regulatory-knowledge"),
+    });
+    const ukSdr = kb.frameworksById.get(frameworkId);
+    const euTax = kb.frameworksById.get("eu_tax_climate_8_1");
+    assert.ok(ukSdr, `${frameworkId} must be loaded`);
+    assert.ok(euTax, "EU Tax 8.1 must be loaded (UK SDR cross-framework dep)");
+    const engine = new DeterministicEngine({
+      engine_commit_sha: "test_sha",
+      knowledge_base_hash: "test_kb_hash",
+      methodology_version: METHODOLOGY_VERSION,
+      now: () => "2026-06-04T00:00:00.000Z",
+      generateId: () => `test_run_render_contract_${frameworkId}`,
+    });
+    const run = await engine.run({ project: { ...MINIMAL_PROJECT } }, [euTax, ukSdr]);
+    // Sanity: the framework_results should include the UK SDR result. If
+    // engine routing breaks this, all downstream assertions fail uninformatively.
+    const ukSdrResult = run.framework_results.find(
+      (fr) => fr.activity_id === frameworkId,
+    );
+    assert.ok(ukSdrResult, `expected ${frameworkId} in run.framework_results`);
+    assert.equal(
+      ukSdrResult.sc_results.length,
+      expectedCriteriaCount,
+      `expected ${expectedCriteriaCount} criteria for ${frameworkId}`,
+    );
+    return run;
+  }
+
+  test("uk_sdr_focus emits a framework_finding with 4 criteria", async () => {
+    const run = await runUkSdrLabel("uk_sdr_focus", 4);
+    const contract = buildRenderContract(run);
+    const focus = contract.framework_findings.find(
+      (f) => f.framework === "uk_sdr_focus",
+    );
+    assert.ok(focus, "contract must include uk_sdr_focus finding");
+    assert.equal(focus.criteria.length, 4);
+    // Spot-check that criterion labels resolve from CRITERION_LABELS.
+    const c1 = focus.criteria.find(
+      (c) => c.criterion_id === "uk_sdr_v1_asset_sustainability_profile",
+    );
+    assert.ok(c1);
+    assert.match(c1.criterion_label, /Asset sustainability profile/);
+  });
+
+  test("uk_sdr_improvers emits a framework_finding with 5 criteria", async () => {
+    const run = await runUkSdrLabel("uk_sdr_improvers", 5);
+    const contract = buildRenderContract(run);
+    const improvers = contract.framework_findings.find(
+      (f) => f.framework === "uk_sdr_improvers",
+    );
+    assert.ok(improvers);
+    assert.equal(improvers.criteria.length, 5);
+  });
+
+  test("uk_sdr_impact emits a framework_finding with 6 criteria", async () => {
+    const run = await runUkSdrLabel("uk_sdr_impact", 6);
+    const contract = buildRenderContract(run);
+    const impact = contract.framework_findings.find(
+      (f) => f.framework === "uk_sdr_impact",
+    );
+    assert.ok(impact);
+    assert.equal(impact.criteria.length, 6);
+  });
+
+  test("project.target_label is inferred to the UK SDR label when UK SDR is scored", async () => {
+    const run = await runUkSdrLabel("uk_sdr_improvers", 5);
+    const contract = buildRenderContract(run);
+    assert.equal(contract.project.target_label, "uk_sdr_improvers");
+  });
+
+  test("every UK SDR criterion verdict carries a non-empty band_rationale", async () => {
+    const run = await runUkSdrLabel("uk_sdr_focus", 4);
+    const contract = buildRenderContract(run);
+    const focus = contract.framework_findings.find(
+      (f) => f.framework === "uk_sdr_focus",
+    );
+    assert.ok(focus);
+    for (const c of focus.criteria) {
+      assert.ok(
+        c.band_rationale.length > 0,
+        `criterion ${c.criterion_id} must have non-empty band_rationale`,
+      );
+    }
+  });
+});

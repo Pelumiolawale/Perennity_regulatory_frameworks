@@ -309,6 +309,26 @@ All 7 criteria implemented per the locked band definitions in `src/lib/methodolo
 - **SFDR remediation panel** in the renderer — band-aware "what's missing" surface lands in commit 1.4 alongside the PDF renderer.
 - **Article 8.2 scope** — PB Taxonomy assessment currently covers only Activity 8.1; criterion 6 flags references to 8.2 as `partially_aligned`. Activity 8.2 KB work is a future commit, not in Phase 1.
 
+## v0.6.1 — RenderContract widens to include UK SDR findings
+
+Bug-fix release. Pre-v0.6.1, `buildRenderContract` filtered `framework_results` to `archetype === "product_label" && framework === "SFDR"` only, so UK SDR engagements emitted an empty `framework_findings` array. The SPA's paid Report PDF reads `RenderContract.framework_findings` to render per-framework section pages — empty findings meant a blank report for every UK SDR engagement (Focus / Improvers / Impact). Surfaced by smoke-testing the 12 seeded test engagements in the SPA's paid Report route.
+
+**Changes (src/lib/renderContract.ts):**
+
+- `filterSFDRFrameworkResults` → `filterProductLabelFrameworkResults`. Accepts `framework === "SFDR"` OR `framework === "UK_SDR"`. ICMA GBP (issuance_framework archetype) is still excluded — Phase 3 owns that contract path.
+- `buildRenderContract` pushes UK SDR findings (`uk_sdr_focus` / `uk_sdr_improvers` / `uk_sdr_impact`) into `framework_findings` alongside SFDR Art 8/9 findings. Each finding uses the framework's `activity_id` as the `framework` discriminator string.
+- `FrameworkFinding.framework` type union widened from `"sfdr_art8" | "sfdr_art9"` to also include the three UK SDR strings. `SupportedRenderLabel` union widened similarly.
+- `CRITERION_LABELS` extended with 15 UK SDR criterion entries (4 Focus + 5 Improvers + 6 Impact) so the contract is self-describing for downstream renderers.
+- `resolveProjectMetadata` updated to infer UK SDR target_label when a UK SDR framework is scored. Inference priority: UK SDR > SFDR Art 8+9 combined > SFDR Art 9 > SFDR Art 8 (degenerate default). UK SDR labels never combine (per current engine architecture, only one UK SDR framework is scored per engagement).
+
+**Test coverage:** 5 new tests in `src/lib/__tests__/renderContract.test.ts` lock the UK SDR contract behaviour — one per UK SDR framework (4 / 5 / 6 criteria respectively) + target_label inference + band_rationale presence. Baseline 351 + 5 = 356/356 passing. EU 8.1 KB hash invariant unchanged. SFDR contract output bit-identical to v0.6.0 (the SFDR-only filter retained semantics; widening only adds cases that pre-v0.6.1 silently dropped).
+
+**No engine logic / scoring changes.** UK SDR scoring functions, SFDR scoring functions, snapshot allowlist gate — all unchanged. Engine output for SFDR-only or EU-Tax-only runs is bit-identical to v0.6.0. The only observable change is non-empty `RenderContract.framework_findings` for UK SDR runs.
+
+**Public exports unchanged.** Type unions widened (`SupportedRenderLabel`, `FrameworkFinding.framework`); no runtime export added or removed. SPA consumers bumping the pin from v0.6.0 to v0.6.1 see UK SDR findings flow through with zero code changes required on their side — the paid PDF generator should now find content to render.
+
+**Out of scope (deferred to a future commit):** UK SDR section pages in the PDF generator itself (`src/export/reportPDF.js` in the SPA repo) — that work is captured in `docs/paid-report-ux-cleanup-brief.md` Phase B and assigned to a parallel session. v0.6.1 fixes the engine-side blocker; the app-side PDF rendering scaffolding is independent.
+
 ## v0.6.0 — UK SDR fund label eligibility (Phase 2)
 
 Substantive feature ship. Adds the three FCA PS23/16 fund label assessments — Sustainability Focus, Sustainability Improvers, Sustainability Impact — as `product_label` archetype frameworks under the `uk_sdr_v1` regime. Methodology stays at v3.5; UK SDR is a calibration extension, not a methodology bump. EU 8.1 KB hash invariant `sha256:b3daee…d43` unchanged. All SFDR Art 8/9 outputs unchanged.
