@@ -1,9 +1,17 @@
-// SFDR criterion_id → scoring function registry.
+// SFDR + UK SDR criterion_id → scoring function registry.
+//
 // Phase 1 commit 1.2 shipped Article 8 (7 criteria). Phase 1 commit 1.3
 // (methodology v3.4) ships Article 9 with three criteria (the prior v3.3
 // four-criterion Art 9 was reframed: criterion 11 folded into criterion 8
 // sub-case (b); the 90% SI floor moved from per-criterion threshold to
 // methodology preamble). All 10 SFDR criteria are now scored.
+//
+// v0.6.0 (Phase 2): UK SDR added — 15 criteria across Focus / Improvers /
+// Impact. The registry name `SFDR_REGISTRY` is historical (it became the
+// single product-label scoring registry when SFDR was the only regime). UK
+// SDR uses the same SFDRScoringFn signature and the same orchestrator
+// (src/sfdr/orchestration.ts) — adding entries here keeps the runtime
+// dispatch path unchanged.
 
 import type { SFDRScoringFn } from "./orchestration";
 import {
@@ -20,6 +28,7 @@ import {
   art9_c9_si_eligibility_evidence_pack,
   art9_c10_project_pai_data_provision,
 } from "./art9-scoring";
+import { UK_SDR_SCORING_REGISTRY } from "./uk-sdr-scoring";
 
 export const SFDR_REGISTRY: ReadonlyMap<string, SFDRScoringFn> = new Map<string, SFDRScoringFn>([
   // Art 8 (v3.3 / 1.2): 7 criteria.
@@ -35,4 +44,6 @@ export const SFDR_REGISTRY: ReadonlyMap<string, SFDRScoringFn> = new Map<string,
   ["sfdr_v1_si_objective_qualification", art9_c8_si_objective_qualification],
   ["sfdr_v1_si_eligibility_evidence_pack", art9_c9_si_eligibility_evidence_pack],
   ["sfdr_v1_project_pai_data_provision", art9_c10_project_pai_data_provision],
+  // UK SDR (v3.5 / Phase 2): 15 criteria.
+  ...UK_SDR_SCORING_REGISTRY,
 ]);

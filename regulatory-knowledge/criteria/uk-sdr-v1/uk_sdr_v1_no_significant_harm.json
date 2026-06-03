@@ -1,0 +1,20 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_no_significant_harm",
+  "name": "No significant harm screen (DNSH-equivalent)",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraphs 4.32-4.38 — Sustainability Impact products must not cause significant harm to other sustainability objectives in pursuit of their impact objective)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_impact"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the asset clears a DNSH-equivalent screen — pursuing the impact objective must not cause significant harm to other environmental or social objectives. PS23/16 ¶4.38 imposes this screen but does not specify methodology; PB methodology v3.5 satisfies it by reading the upstream EU Taxonomy 8.1 DNSH result via cross-framework dependency. If EU Taxonomy 8.1 DNSH is aligned, this criterion is aligned. If any DNSH criterion fails, this criterion fails. This mirrors the SFDR Article 9 c4 cross-framework DNSH pattern, applied to UK SDR Impact.",
+  "depends_on_framework": ["eu_tax_climate_8_1"]
+}

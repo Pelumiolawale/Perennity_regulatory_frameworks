@@ -1,0 +1,63 @@
+{
+  "$schema": "./constants.schema.json",
+  "kind": "uk_sdr_credible_standards",
+  "constant_id": "uk_sdr_v1_credible_standards_data_centre",
+  "regime": "uk_sdr_v1",
+  "effective_date": "2024-07-31",
+  "description": "Sustainability standards PB methodology v3.5 recognises as credible for data-centre assets under FCA PS23/16 sustainability labels. PS23/16 requires standards to be 'robust' but does not enumerate them; this list is PB's calibration. Refresh on each methodology version bump if recognised set changes.",
+  "credible_standards": [
+    {
+      "standard": "EU Taxonomy Activity 8.1 (data processing, hosting and related activities) alignment",
+      "regime": "EU_TAXONOMY",
+      "applicability": ["uk_sdr_focus", "uk_sdr_improvers", "uk_sdr_impact"],
+      "rationale": "EU Taxonomy provides robust, sector-specific technical screening criteria (PUE, renewable energy, DNSH). Single most rigorous data-centre sustainability standard in force."
+    },
+    {
+      "standard": "LEED Platinum with Energy & Atmosphere prerequisites met",
+      "regime": "USGBC",
+      "applicability": ["uk_sdr_focus"],
+      "rationale": "LEED Platinum certification with E&A prerequisites is widely recognised in the data-centre sector; meets PS23/16 'robust' bar for Focus label."
+    },
+    {
+      "standard": "Science Based Targets initiative (SBTi) validation",
+      "regime": "SBTi",
+      "applicability": ["uk_sdr_improvers", "uk_sdr_impact"],
+      "rationale": "SBTi validation provides credible emissions reduction trajectory; suitable for Improvers (trajectory-based label) and Impact (additionality evidence). Does not cover full sustainability profile, so partial standing for Focus."
+    }
+  ],
+  "data_centre_kpis": [
+    {
+      "kpi": "PUE (Power Usage Effectiveness)",
+      "unit": "ratio",
+      "focus_threshold_cool": 1.3,
+      "focus_threshold_warm": 1.4,
+      "impact_threshold_cool": 1.2,
+      "impact_threshold_warm": 1.3,
+      "rationale": "Thresholds mirror EU Taxonomy 8.1 / CNDCP cool-warm split; Impact tier uses PB-conservatism aligned-tier values per methodology v3.5 F3."
+    },
+    {
+      "kpi": "Renewable Energy Procurement",
+      "unit": "percent",
+      "focus_threshold": 70,
+      "improvers_target": 70,
+      "impact_threshold": 80,
+      "rationale": "Focus = 70% (PB methodology, harmonised with industry baseline). Impact tier = 80% with additionality evidence."
+    },
+    {
+      "kpi": "GHG Emissions (Scope 1+2)",
+      "unit": "tonnes CO2e per MW per year",
+      "focus_threshold": 3000,
+      "improvers_reduction_target_pct": 30,
+      "impact_threshold": 2000,
+      "rationale": "PB methodology values; calibrated to industry top-quartile (Focus) and IEA NZE-2050 compatible trajectory (Impact)."
+    },
+    {
+      "kpi": "Water Usage Effectiveness (WUE)",
+      "unit": "L/kWh",
+      "focus_threshold_moderate_stress": 0.6,
+      "focus_threshold_high_stress": 0.4,
+      "impact_threshold_all_regions": 0.4,
+      "rationale": "Thresholds mirror EU Taxonomy 8.1 DNSH (water) gates. Impact tier requires single tight threshold + ≥50% water recycling."
+    }
+  ]
+}

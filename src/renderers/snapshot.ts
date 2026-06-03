@@ -83,6 +83,129 @@ export const SNAPSHOT_PHRASES: SnapshotPhraseTable = {
     minor:
       "Information about minimum-safeguards compliance under Article 18 has not yet been provided.",
   },
+  // -- UK SDR Sustainability Focus (v0.6.0) ----------------------------------
+  uk_sdr_v1_asset_sustainability_profile: {
+    critical:
+      "Your asset does not yet evidence alignment with a credible sustainability standard required for the UK SDR Sustainability Focus label.",
+    material:
+      "Credible-standard alignment is only partially evidenced; gaps in the upstream standard assessment remain.",
+    minor:
+      "Information about the asset's credible-standard assessment has not yet been provided.",
+  },
+  uk_sdr_v1_credible_sustainability_standard: {
+    critical:
+      "The sustainability standard claimed by the developer is not recognised for the UK SDR Sustainability Focus label.",
+    material:
+      "The claimed standard provides partial coverage; full Focus alignment requires a complementary recognised standard.",
+    minor:
+      "Information about which sustainability standard is being claimed has not yet been provided.",
+  },
+  uk_sdr_v1_sustainable_proportion_threshold: {
+    critical:
+      "The asset would not qualify toward a Sustainability Focus fund's 70% sustainable-assets threshold.",
+    material:
+      "The asset partially qualifies toward the fund's 70% threshold; fund-manager discretion applies.",
+    minor:
+      "Information needed to determine the asset's qualification toward the fund's 70% threshold has not yet been provided.",
+  },
+  uk_sdr_v1_asset_kpi_reporting: {
+    critical:
+      "Your annual KPI reporting commitment does not yet cover the required data-centre sustainability KPIs.",
+    material:
+      "The annual KPI reporting commitment is incomplete; one or more required KPIs are missing.",
+    minor:
+      "Information about the annual KPI reporting commitment has not yet been provided.",
+  },
+  // -- UK SDR Sustainability Improvers (v0.6.0) ------------------------------
+  uk_sdr_v1_baseline_sustainability_assessment: {
+    critical:
+      "Baseline performance metrics required for the Sustainability Improvers label have not been measured.",
+    material:
+      "The baseline assessment is incomplete; one or more required metrics are missing.",
+    minor:
+      "Information about the asset's baseline sustainability metrics has not yet been provided.",
+  },
+  uk_sdr_v1_improvement_strategy: {
+    critical:
+      "The improvement strategy does not meet the credibility threshold required for the Sustainability Improvers label.",
+    material:
+      "The improvement strategy is present but the timeline or action list does not yet meet the aligned-tier expectation.",
+    minor:
+      "Information about the improvement strategy and timeline has not yet been provided.",
+  },
+  uk_sdr_v1_improvement_kpi_targets: {
+    critical:
+      "Quantified targets for the required data-centre KPIs are not in place.",
+    material:
+      "Quantified targets are present but cover only part of the required KPI set.",
+    minor:
+      "Information about quantified improvement targets has not yet been provided.",
+  },
+  uk_sdr_v1_progress_monitoring: {
+    critical:
+      "The progress monitoring commitment does not yet meet the cadence required for the Sustainability Improvers label.",
+    material:
+      "Annual progress reporting is committed but the verification mechanism is not yet stated.",
+    minor:
+      "Information about the progress monitoring and reporting commitment has not yet been provided.",
+  },
+  uk_sdr_v1_improvement_proportion_threshold: {
+    critical:
+      "The asset does not qualify toward a Sustainability Improvers fund's 70% threshold; one or more upstream gates fail.",
+    material:
+      "The asset partially qualifies toward the fund's 70% threshold; fund-manager discretion applies.",
+    minor:
+      "Information needed to determine improvement-proportion qualification has not yet been provided.",
+  },
+  // -- UK SDR Sustainability Impact (v0.6.0) ---------------------------------
+  uk_sdr_v1_impact_objective: {
+    critical:
+      "A specific impact objective is not yet named for the Sustainability Impact label.",
+    material:
+      "The impact objective is named but lacks full categorisation or deal-documentation anchor.",
+    minor:
+      "Information about the asset's defined impact objective has not yet been provided.",
+  },
+  uk_sdr_v1_impact_measurement: {
+    critical:
+      "The theory of change and quantified indicators required for the Sustainability Impact label are not in place.",
+    material:
+      "Theory of change or quantified indicators are partially present; both are required for full alignment.",
+    minor:
+      "Information about the impact measurement framework has not yet been provided.",
+  },
+  uk_sdr_v1_impact_additionality: {
+    critical:
+      "Additionality evidence required for the Sustainability Impact label has not been provided.",
+    material:
+      "The additionality narrative is brief; substantive explanation of the counterfactual is expected for full alignment.",
+    minor:
+      "Information about how the asset contributes additionally to the impact objective has not yet been provided.",
+  },
+  uk_sdr_v1_impact_proportion_threshold: {
+    critical:
+      "The asset does not qualify toward a Sustainability Impact fund's 70% threshold; one or more upstream gates fail.",
+    material:
+      "The asset partially qualifies toward the fund's 70% threshold; fund-manager discretion applies.",
+    minor:
+      "Information needed to determine impact-proportion qualification has not yet been provided.",
+  },
+  uk_sdr_v1_impact_reporting: {
+    critical:
+      "The annual impact reporting commitment is insufficient for the Sustainability Impact label.",
+    material:
+      "The annual impact reporting commitment covers some elements but not all four (cadence, indicator linkage, outcome-level, verification).",
+    minor:
+      "Information about the annual impact reporting commitment has not yet been provided.",
+  },
+  uk_sdr_v1_no_significant_harm: {
+    critical:
+      "The asset does not clear the no-significant-harm screen required for the Sustainability Impact label.",
+    material:
+      "The no-significant-harm screen is partially cleared; gaps in the upstream DNSH assessment remain.",
+    minor:
+      "Information about no-significant-harm clearance has not yet been provided.",
+  },
 };
 
 export const DEFAULT_PHRASE: Record<Severity, string> = {

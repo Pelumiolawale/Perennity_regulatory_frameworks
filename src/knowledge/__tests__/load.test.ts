@@ -46,13 +46,17 @@ describe("loadKnowledgeBase — valid input", () => {
     assert.equal(kb.activities[0].id, "eu_tax_climate_8_1");
     assert.equal(kb.byId.get("eu_tax_climate_8_1"), kb.activities[0]);
     // sourceFiles enumerates every framework JSON the loader walked,
-    // independent of archetype. Bumps when new frameworks land. As of
-    // v0.5.0-alpha.1: EU 8.1 + SFDR Art 8 + SFDR Art 9 = 3.
-    assert.equal(kb.sourceFiles.length, 3);
-    // The full frameworks collection includes both archetypes.
-    assert.equal(kb.frameworks.length, 3);
+    // independent of archetype. Bumps when new frameworks land.
+    // As of v0.6.0 / Phase 2: EU 8.1 (1) + SFDR Art 8/9 (2) + UK SDR
+    // Focus/Improvers/Impact (3) = 6.
+    assert.equal(kb.sourceFiles.length, 6);
+    // The full frameworks collection includes all archetypes.
+    assert.equal(kb.frameworks.length, 6);
     assert.ok(kb.frameworksById.get("sfdr_v1_article_8"));
     assert.ok(kb.frameworksById.get("sfdr_v1_article_9"));
+    assert.ok(kb.frameworksById.get("uk_sdr_focus"));
+    assert.ok(kb.frameworksById.get("uk_sdr_improvers"));
+    assert.ok(kb.frameworksById.get("uk_sdr_impact"));
     assert.match(kb.knowledge_base_hash, /^sha256:[a-f0-9]{64}$/);
     assert.match(kb.schema_hash, /^sha256:[a-f0-9]{64}$/);
     assert.deepEqual(kb.warnings, []);

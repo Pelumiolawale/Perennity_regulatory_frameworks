@@ -155,6 +155,11 @@ export interface ProjectInput {
   // evidence, criterion 6 taxonomy claim). Additive — existing EU Tax 8.1
   // assessments do not set this field.
   sfdr?: import("./sfdr/types").ProjectSFDRInputs;
+  // v0.6.0: optional typed UK SDR project-level inputs consumed by UK SDR
+  // Focus / Improvers / Impact scoring. Additive — existing SFDR/EU Tax
+  // assessments do not set this field. UK SDR criteria resolve to
+  // insufficient_evidence when this field is absent.
+  uk_sdr?: import("./sfdr/types").ProjectUKSDRInputs;
 }
 
 export interface EvidenceReference {

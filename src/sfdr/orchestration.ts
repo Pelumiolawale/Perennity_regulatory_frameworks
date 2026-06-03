@@ -178,6 +178,21 @@ export function aggregateProductLabelVerdict(
   return "aligned";
 }
 
+// Derive the scoring_logic_ref prefix from the criterion's regime. The
+// orchestrator is shared across regulatory regimes that route through the
+// SFDR scoring path (SFDR Art 8/9, UK SDR Focus/Improvers/Impact, future
+// regimes); the per-criterion scoring_logic_ref needs to name the regime
+// honestly for audit-trail readers. Pattern matches the criterion_id schema
+// (`<regime>_v<n>_<slug>`): take everything up to the second underscore
+// segment ending in v<n>. Examples: `sfdr_v1_dnsh_assessment` -> `sfdr`,
+// `uk_sdr_v1_no_significant_harm` -> `uk_sdr`. Falls back to the literal
+// criterion_id if the pattern doesn't match (defensive — surfaces the
+// malformed id rather than silently emitting a misleading prefix).
+function scoringLogicPrefix(criterion_id: string): string {
+  const match = criterion_id.match(/^([a-z_]+?)_v\d+_/);
+  return match ? match[1] : criterion_id;
+}
+
 function scoreToResult(
   criterion_id: string,
   s: SFDRCriterionScore,
@@ -188,7 +203,7 @@ function scoreToResult(
     verdict: bandToVerdict(s.band),
     gap_summary: s.rationale_text,
     evidence_refs: s.evidence_refs ?? [],
-    scoring_logic_ref: `sfdr.${criterion_id}.v1`,
+    scoring_logic_ref: `${scoringLogicPrefix(criterion_id)}.${criterion_id}.v1`,
     scoring_logic_version: "v1",
     rationale_text: s.rationale_text,
   };

@@ -1,0 +1,26 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_asset_sustainability_profile",
+  "name": "Asset sustainability profile (credible standard alignment)",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (Sustainability Focus, paragraphs 4.23-4.27 — credible sustainability standard requirement)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    },
+    {
+      "regulation": "FCA Handbook ESG sourcebook (ESG 5)",
+      "celex": "FCA-ESG-5",
+      "article": "ESG 5.3 (Sustainability Focus label conditions)",
+      "url": "https://www.handbook.fca.org.uk/handbook/ESG/5/"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_focus"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the data centre asset meets a credible sustainability standard as required by the FCA's Sustainability Focus label. PB methodology v3.5 calibrates 'credible standard' for data centres as alignment with EU Taxonomy Activity 8.1 (data processing, hosting and related activities). PS23/16 does not enumerate sector-specific credible standards; the EU Taxonomy 8.1 calibration is PB methodology, traceable to industry-recognised technical screening criteria. Reads the upstream EU Taxonomy 8.1 framework result via cross-framework dependency.",
+  "depends_on_framework": ["eu_tax_climate_8_1"]
+}

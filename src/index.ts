@@ -52,6 +52,16 @@ export type { PAIDataFile, PAIRow, VerificationStatus } from "./lib/paiDataFile"
 export { BUNDLED_SFDR_FRAMEWORKS } from "./lib/bundledSFDRFrameworks";
 export type { BundledSFDRFramework } from "./lib/bundledSFDRFrameworks";
 
+// --- BUNDLED_UK_SDR_FRAMEWORKS (v0.6.0, Phase 2) ----------------------------
+// Browser-safe bundle of the three UK SDR product_label frameworks (Focus,
+// Improvers, Impact) with their criterion refs eagerly resolved. Same shape
+// as BUNDLED_SFDR_FRAMEWORKS. The SPA imports this directly, passes
+// `framework` to Engine.run, and uses `criteria` for per-criterion lookups
+// in the paid Report renderer. See src/lib/bundledUKSDRFrameworks.ts for
+// browser-safety notes.
+export { BUNDLED_UK_SDR_FRAMEWORKS } from "./lib/bundledUKSDRFrameworks";
+export type { BundledUKSDRFramework } from "./lib/bundledUKSDRFrameworks";
+
 // --- Bundled activities (browser-friendly KB) -------------------------------
 // loadKnowledgeBase uses node:fs + fast-glob and cannot run in browser
 // contexts. BUNDLED_ACTIVITIES is a build-time-resolved Activity[] that
@@ -140,6 +150,28 @@ export type {
   SectorMaterialCategoryId,
 } from "./sfdr";
 export { BUNDLED_SFDR_CRITERIA } from "./sfdr/bundled";
+
+// --- UK SDR scoring (v0.6.0, Phase 2) ---------------------------------------
+// UK SDR Sustainability Focus / Improvers / Impact, 15 criteria fully scored
+// under methodology v3.5. Routes through the same SFDR orchestrator
+// (src/sfdr/orchestration.ts) and the same SFDR_REGISTRY (which carries
+// UK SDR entries since v0.6.0). The registry export below is the discrete
+// UK-SDR-only map for tooling and tests that want to count UK SDR criteria
+// without filtering the combined SFDR_REGISTRY.
+export { UK_SDR_SCORING_REGISTRY } from "./sfdr";
+export type {
+  ProjectUKSDRInputs,
+  UKSDRClaimedStandard,
+  UKSDRKPIName,
+  UKSDRReportingFrequency,
+  UKSDRKPIReportingCommitment,
+  UKSDRBaselineMetrics,
+  UKSDRImprovementStrategy,
+  UKSDRImprovementTargets,
+  UKSDRImprovementPlan,
+  UKSDRQuantifiedImpactIndicator,
+  UKSDRImpactPlan,
+} from "./sfdr";
 
 // --- Knowledge-base loader --------------------------------------------------
 export {

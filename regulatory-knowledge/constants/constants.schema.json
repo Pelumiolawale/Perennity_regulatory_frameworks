@@ -12,7 +12,8 @@
         "eu_non_cooperative_jurisdictions",
         "sfdr_v1_material_pais_data_centre",
         "recognised_sustainability_standards",
-        "data_centre_sector_material_categories"
+        "data_centre_sector_material_categories",
+        "uk_sdr_credible_standards"
       ]
     },
     "description": { "type": "string", "minLength": 1 },

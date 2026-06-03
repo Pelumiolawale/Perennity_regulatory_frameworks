@@ -1,0 +1,19 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_impact_objective",
+  "name": "Defined impact objective",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraphs 4.32-4.38 — Sustainability Impact requires a specific, positive, real-world sustainability outcome objective)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_impact"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the project has a named, specific positive sustainability impact objective — not a general 'ESG-friendly' framing but a particular environmental or social outcome the asset is intended to deliver. PS23/16 ¶4.32 requires the impact objective to be 'specific and measurable' and to address a sustainability challenge. PB methodology v3.5 aligned band requires the objective to be (a) named explicitly, (b) categorised against a recognised taxonomy of environmental or social outcomes (EU Taxonomy 6 objectives or equivalent), and (c) declared in deal-defining documentation (investment memorandum or equivalent)."
+}

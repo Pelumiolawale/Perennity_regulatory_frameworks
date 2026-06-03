@@ -18,8 +18,8 @@
   "properties": {
     "criterion_id": {
       "type": "string",
-      "pattern": "^[a-z]+_v\\d+_[a-z][a-z0-9_]*$",
-      "description": "Version-stamped criterion identifier. Format: <regime>_v<n>_<criterion_slug>. Example: sfdr_v1_good_governance_attestation."
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_v\\d+_[a-z][a-z0-9_]*$",
+      "description": "Version-stamped criterion identifier. Format: <regime>_v<n>_<criterion_slug>. The regime portion may contain underscores (e.g. uk_sdr_v1_*) — pattern admits multi-token regime slugs since v0.6.0 / Phase 2. Example: sfdr_v1_good_governance_attestation."
     },
     "name": {
       "type": "string",
@@ -28,8 +28,8 @@
     },
     "regime": {
       "type": "string",
-      "pattern": "^[a-z]+_v\\d+$",
-      "description": "Regulatory regime + version slug. MUST match the regime portion of criterion_id. Example: sfdr_v1."
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_v\\d+$",
+      "description": "Regulatory regime + version slug. MUST match the regime portion of criterion_id. May contain underscores (e.g. uk_sdr_v1) — pattern admits multi-token regime slugs since v0.6.0 / Phase 2. Example: sfdr_v1."
     },
     "regulatory_anchors": {
       "type": "array",
@@ -75,7 +75,7 @@
     },
     "depends_on": {
       "type": "array",
-      "items": { "type": "string", "pattern": "^[a-z]+_v\\d+_[a-z][a-z0-9_]*$" },
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_v\\d+_[a-z][a-z0-9_]*$" },
       "uniqueItems": true,
       "description": "Intra-framework dependencies: criterion_id list of criteria that MUST be scored before this one. The engine sorts by topological order and exposes scored dependents to this criterion's logic function via LogicInput.dependencies. Added in v0.5.0-alpha.2 (Phase 1, commit 1.2). Cycles fail at framework-load time."
     },

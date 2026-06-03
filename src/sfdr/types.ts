@@ -418,3 +418,88 @@ export interface SFDRCriterionScore {
   not_applicable_rationale?: string;
   numeric_value?: { value: number; unit: string; label: string };
 }
+
+// -- UK SDR input types (v0.6.0 — Phase 2, UK SDR implementation) ------------
+//
+// Additive nested field on ProjectInput.uk_sdr. Absence at any nesting level
+// resolves the relevant criterion to insufficient_evidence — the same pattern
+// SFDR uses. Three groups of inputs, one per UK SDR label:
+//   - Sustainability Focus reads `sustainability_standard_claimed` and
+//     `kpi_reporting_commitment`.
+//   - Sustainability Improvers reads `improvement_plan`.
+//   - Sustainability Impact reads `impact_plan`.
+// Numeric thresholds applied to these inputs are PB methodology v3.5 values;
+// FCA PS23/16 does not prescribe sector-specific quantitative thresholds.
+// ============================================================================
+
+export type UKSDRClaimedStandard =
+  | "eu_taxonomy_8_1"
+  | "leed_platinum"
+  | "sbti"
+  | string; // open-ended to surface unknown standards as not_aligned with name
+
+export type UKSDRKPIName = "pue" | "renewable_energy_pct" | "ghg_emissions" | "wue";
+
+export type UKSDRReportingFrequency = "annual" | "semi_annual" | "quarterly";
+
+export interface UKSDRKPIReportingCommitment {
+  kpis_committed?: UKSDRKPIName[];
+  reporting_frequency?: UKSDRReportingFrequency;
+  verification_method?: "third_party_audit" | "internal" | "none";
+}
+
+export interface UKSDRBaselineMetrics {
+  pue_current?: number;
+  renewable_pct_current?: number;
+  ghg_current?: number; // tonnes CO2e/year
+  wue_current?: number;
+}
+
+export interface UKSDRImprovementStrategy {
+  timeline_years?: number;
+  actions?: string[];
+  verification_method?: "third_party_audit" | "internal" | "none";
+}
+
+export interface UKSDRImprovementTargets {
+  pue_target?: number;
+  renewable_pct_target?: number;
+  ghg_reduction_pct?: number;
+  wue_target?: number;
+}
+
+export interface UKSDRImprovementPlan {
+  baseline_metrics?: UKSDRBaselineMetrics;
+  strategy?: UKSDRImprovementStrategy;
+  targets?: UKSDRImprovementTargets;
+}
+
+export interface UKSDRQuantifiedImpactIndicator {
+  name: string;
+  baseline: number;
+  target: number;
+  unit: string;
+  source?: "eu_taxonomy" | "sfdr_l2_pai" | "bespoke";
+}
+
+export interface UKSDRImpactPlan {
+  impact_objective?: string;
+  objective_category?: string; // e.g. "environmental_climate_mitigation"
+  declared_in?: string; // e.g. "investment_memorandum"
+  theory_of_change?: string;
+  quantified_indicators?: UKSDRQuantifiedImpactIndicator[];
+  additionality_evidence?: string;
+  reporting_commitment?: {
+    annual_cadence?: boolean;
+    reports_against_indicators?: boolean;
+    outcome_level_reporting?: boolean;
+    verification_method?: "third_party_audit" | "internal" | "none";
+  };
+}
+
+export interface ProjectUKSDRInputs {
+  sustainability_standard_claimed?: UKSDRClaimedStandard;
+  kpi_reporting_commitment?: UKSDRKPIReportingCommitment;
+  improvement_plan?: UKSDRImprovementPlan;
+  impact_plan?: UKSDRImpactPlan;
+}

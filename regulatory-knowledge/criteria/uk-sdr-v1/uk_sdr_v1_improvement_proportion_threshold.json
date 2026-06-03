@@ -1,0 +1,25 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_improvement_proportion_threshold",
+  "name": "Improvement proportion (asset-level qualification for fund 70% threshold)",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraphs 4.28-4.31 — minimum 70% of fund assets must be on an improvement trajectory for the Sustainability Improvers label)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_improvers"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "PS23/16 requires ≥70% of fund assets to be on a sustainability improvement trajectory for the Sustainability Improvers label. At the project (asset) level, this criterion tests whether the asset would qualify toward the fund's 70% numerator. Asset-level qualification cascades from the four upstream Improvers criteria (c5 baseline, c6 strategy, c7 targets, c8 monitoring) — if all four are aligned the asset counts; if any are not_aligned the asset does not count. Fund-level 70% aggregation is the FMP's job; PB certifies the asset's eligibility status.",
+  "depends_on": [
+    "uk_sdr_v1_baseline_sustainability_assessment",
+    "uk_sdr_v1_improvement_strategy",
+    "uk_sdr_v1_improvement_kpi_targets",
+    "uk_sdr_v1_progress_monitoring"
+  ]
+}

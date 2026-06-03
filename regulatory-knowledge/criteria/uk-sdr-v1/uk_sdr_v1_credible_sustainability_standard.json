@@ -1,0 +1,19 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_credible_sustainability_standard",
+  "name": "Credible sustainability standard recognition",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraphs 4.23-4.27 — credibility of standards used for Sustainability Focus eligibility)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_focus"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the sustainability standard claimed by the developer is one PB methodology v3.5 recognises as credible for data-centre assets under the FCA Sustainability Focus label. PS23/16 requires standards to be 'robust' but does not enumerate which standards qualify; PB methodology recognises EU Taxonomy Activity 8.1 (preferred), LEED Platinum (with Energy & Atmosphere prerequisites), and SBTi (partial — covers emissions trajectory but not full sustainability profile). Claimed standards outside this set fail until a methodology update extends the recognised list."
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_impact_measurement",
+  "name": "Impact measurement (theory of change + quantified indicators)",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraphs 4.32-4.38 — Sustainability Impact requires theory of change with quantified indicators of contribution to outcome)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_impact"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the project has a documented theory of change linking the asset's activities to the impact objective, supported by quantified indicators of contribution. PS23/16 ¶4.34 requires the theory of change to be 'robust'; PB methodology v3.5 aligned band requires (a) a written theory of change with explicit causal chain from activities to outcomes, and (b) ≥3 quantified indicators with baselines and targets sourced from a recognised taxonomy (EU Taxonomy substantial contribution indicators, SFDR L2 RTS Annex I PAIs, or sector-recognised equivalents).",
+  "depends_on": ["uk_sdr_v1_impact_objective"]
+}

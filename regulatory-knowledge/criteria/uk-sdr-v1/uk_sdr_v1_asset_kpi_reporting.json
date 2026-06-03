@@ -1,0 +1,19 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_asset_kpi_reporting",
+  "name": "Asset-level KPI reporting commitment",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraph 4.25 — ongoing reporting obligation for labelled products); Chapter 5: Disclosures (consumer-facing, pre-contractual, ongoing)",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_focus"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the developer has committed to annual disclosure of asset-level sustainability KPIs material to the data-centre sector. PS23/16 mandates ongoing reporting but does not enumerate sector-specific KPIs; PB methodology v3.5 requires four KPIs (PUE, renewable energy %, GHG Scope 1+2, WUE) as the material set for data centres — these are the same KPIs scored under EU Taxonomy 8.1 substantial contribution + DNSH so the reporting commitment is consistent with the credible-standard claim."
+}

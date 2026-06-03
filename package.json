@@ -1,7 +1,7 @@
 {
   "name": "@perennity/engine",
   "version": "0.6.0",
-  "description": "Perennity Bridge deterministic scoring engine — Activity 8.1",
+  "description": "Perennity Bridge deterministic scoring engine — EU Taxonomy 8.1 + SFDR Art 8/9 + UK SDR Focus/Improvers/Impact",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

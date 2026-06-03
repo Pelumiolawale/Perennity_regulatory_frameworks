@@ -1,0 +1,19 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_progress_monitoring",
+  "name": "Progress monitoring and reporting commitment",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraph 4.31 — ongoing monitoring and reporting against the improvement plan); Chapter 5: Disclosures",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_improvers"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the developer has committed to monitoring progress against the improvement plan and reporting outcomes at least annually. PS23/16 ¶4.31 requires ongoing reporting; PB methodology v3.5 aligned band requires (a) annual cadence, (b) reporting against the c7 quantified targets explicitly (not generic ESG narrative), and (c) a stated verification mechanism (third-party assurance or independent technical audit). Partially_aligned for annual cadence without verification commitment."
+}

@@ -174,8 +174,8 @@
 
     "regime": {
       "type": "string",
-      "pattern": "^[a-z]+_v\\d+$",
-      "description": "Regulatory regime + version slug. Added in v3.3 alongside the shared criterion library. Required for product_label frameworks that use the ref-based criteria shape; the loader cross-checks this against the regime field on each referenced criterion. Example: sfdr_v1."
+      "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_v\\d+$",
+      "description": "Regulatory regime + version slug. Added in v3.3 alongside the shared criterion library. Required for product_label frameworks that use the ref-based criteria shape; the loader cross-checks this against the regime field on each referenced criterion. May contain underscores (e.g. uk_sdr_v1) — pattern admits multi-token regime slugs since v0.6.0 / Phase 2. Example: sfdr_v1."
     },
     "label": {
       "type": "string",
@@ -529,8 +529,8 @@
       "properties": {
         "ref": {
           "type": "string",
-          "pattern": "^[a-z]+_v\\d+_[a-z][a-z0-9_]*$",
-          "description": "criterion_id of a criterion in the shared library. Resolved by the loader against regulatory-knowledge/criteria/<regime>/<criterion_id>.json."
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*_v\\d+_[a-z][a-z0-9_]*$",
+          "description": "criterion_id of a criterion in the shared library. Resolved by the loader against regulatory-knowledge/criteria/<regime>/<criterion_id>.json. Pattern admits multi-token regime slugs (e.g. uk_sdr_v1_*) since v0.6.0 / Phase 2."
         },
         "weight": {
           "type": ["number", "null"],

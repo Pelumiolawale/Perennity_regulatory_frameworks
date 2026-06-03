@@ -1,0 +1,19 @@
+{
+  "$schema": "../criterion.schema.json",
+  "criterion_id": "uk_sdr_v1_impact_reporting",
+  "name": "Annual impact reporting commitment",
+  "regime": "uk_sdr_v1",
+  "regulatory_anchors": [
+    {
+      "regulation": "FCA Policy Statement PS23/16: Sustainability Disclosure Requirements (SDR) and investment labels",
+      "celex": "FCA-PS23-16",
+      "article": "Chapter 4: Sustainability labels (paragraph 4.37 — annual impact report against the theory of change); Chapter 5: Disclosures",
+      "url": "https://www.fca.org.uk/publication/policy/ps23-16.pdf"
+    }
+  ],
+  "axes": ["project"],
+  "applies_to": ["uk_sdr_impact"],
+  "scoring_status": "implemented",
+  "methodology_version_introduced": "v3.5",
+  "summary": "Tests whether the developer has committed to annual reporting against the impact theory of change and quantified indicators from c11. PS23/16 ¶4.37 requires Sustainability Impact products to publish annual impact reports. PB methodology v3.5 aligned band requires (a) annual cadence, (b) explicit reporting against the c11 indicators (not generic sustainability narrative), (c) outcome-level reporting (the impact itself) rather than activity-level only (what was done), and (d) a stated verification mechanism (third-party impact verification or independent assurance)."
+}
