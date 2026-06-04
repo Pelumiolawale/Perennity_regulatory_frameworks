@@ -49,6 +49,7 @@ function score(band: SFDRCriterionScore["band"]): SFDRCriterionScore {
 
 function fakeEUTaxResult(
   dnsh: CriterionResult["verdict"][],
+  overrideOverallVerdict?: FrameworkResult["overall_verdict"],
 ): FrameworkResult {
   return {
     framework: "EU_TAXONOMY_CLIMATE",
@@ -67,7 +68,11 @@ function fakeEUTaxResult(
     safeguards_results: [],
     methodology_results: [],
     minimum_safeguards_verdict: "pass",
-    overall_verdict: "pass",
+    // v0.6.2: optional override so the not_applicable edge case test can
+    // assert the c15 explicit not_applicable branch — when EU Tax 8.1
+    // returns "not_applicable" (no Taxonomy claim made), dnsh_results is
+    // empty and overall_verdict !== "pass".
+    overall_verdict: overrideOverallVerdict ?? "pass",
     indicative_score: 0,
   };
 }
@@ -343,5 +348,27 @@ describe("UK SDR c15 — no-significant-harm screen", () => {
   test("insufficient_evidence: EU Tax framework not run", () => {
     const r = uk_sdr_c15_no_significant_harm(ctx({}));
     assert.equal(r.band, "insufficient_evidence");
+  });
+
+  // v0.6.2 (Tier 1 audit item #3): explicit not_applicable handling.
+  // When EU Tax 8.1 is scored but returns overall_verdict "not_applicable"
+  // (no Taxonomy claim made), c15 previously fell through to "DNSH results
+  // are empty" insufficient_evidence — semantically misleading because
+  // dnsh_results IS empty but the cause is "no claim made" not "data
+  // missing". Now returns not_aligned with rationale citing the unmet
+  // dependency.
+  test("not_aligned: EU Tax 8.1 not_applicable (no Taxonomy claim made)", () => {
+    const r = uk_sdr_c15_no_significant_harm(
+      ctx({
+        framework_results: new Map([
+          ["eu_tax_climate_8_1", fakeEUTaxResult([], "not_applicable")],
+        ]),
+      }),
+    );
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /not applicable|no claim|Taxonomy claim/i);
+    // Confirm the rationale names the unmet dependency rather than implying
+    // data is "missing" (which was the pre-v0.6.2 misleading framing).
+    assert.match(r.rationale_text, /no-significant-harm|DNSH|dependency/i);
   });
 });

@@ -235,6 +235,17 @@ export interface CriterionResult {
   // criterion without re-deriving the framework from the parent
   // FrameworkResult.
   applies_under?: string;
+
+  // v0.6.2: regulatory citations associated with this criterion's verdict
+  // (e.g. ["FCA PS23/16 ¶4.23"]). PAID-TIER-ONLY surface — explicitly
+  // excluded from SnapshotOutput by the structural gate's DISALLOWED_KEYS
+  // walk. Citation strings were previously inlined into rationale_text
+  // which leaked them into free-tier surfaces; v0.6.2 relocates them here
+  // so paid-tier renderers can surface the citation trail while free-tier
+  // rationale stays plain-language. Optional; absent on criteria that do
+  // not anchor to a paragraph-specific regulatory reference (e.g. PB
+  // methodology calibrations that have a framework-level anchor only).
+  regulatory_citations?: string[];
 }
 
 export interface FrameworkResult {

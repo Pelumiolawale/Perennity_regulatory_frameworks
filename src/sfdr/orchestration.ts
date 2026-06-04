@@ -222,6 +222,12 @@ function scoreToResult(
   if (framework_id !== undefined) {
     result.applies_under = framework_id;
   }
+  // v0.6.2: forward regulatory citations to CriterionResult. The field is
+  // paid-tier-only — the snapshot gate test's DISALLOWED_KEYS walk blocks
+  // any accidental forwarding into SnapshotOutput.
+  if (s.regulatory_citations !== undefined && s.regulatory_citations.length > 0) {
+    result.regulatory_citations = s.regulatory_citations;
+  }
   return result;
 }
 

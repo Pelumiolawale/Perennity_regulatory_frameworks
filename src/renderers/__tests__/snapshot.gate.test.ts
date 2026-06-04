@@ -120,6 +120,10 @@ const DISALLOWED_KEYS = [
   "gap_summary",
   "ic_voice_description",
   "remediation_summary",
+  // v0.6.2: paid-tier-only field. Set on CriterionResult by SFDR / UK SDR
+  // scoring functions to carry verbatim regulatory citations (e.g.
+  // ["FCA PS23/16 ¶4.23"]). Must never appear in SnapshotOutput.
+  "regulatory_citations",
 ];
 
 function leakyCriterionResult(criterion_id: string): CriterionResult {
@@ -135,6 +139,10 @@ function leakyCriterionResult(criterion_id: string): CriterionResult {
     scoring_logic_ref: "logic.test.v1",
     scoring_logic_version: "v1",
     estimation_used: true,
+    // v0.6.2: regulatory_citations is a paid-tier-only field. Plant a
+    // magic marker so the DISALLOWED_KEYS + content walks both catch any
+    // accidental forwarding into SnapshotOutput.
+    regulatory_citations: [MAGIC.source_text],
   };
 }
 
@@ -295,5 +303,145 @@ describe("SnapshotRenderer — STRUCTURAL GATE (do not skip, do not relax)", () 
     assert.equal(snapshot.cta, "request_project_readiness_report");
     assert.equal(typeof snapshot.disclaimer, "string");
     assert.equal(typeof snapshot.generated_at, "string");
+  });
+});
+
+// ============================================================================
+// v0.6.2 — Content-walk gate: real-scoring rationale strings
+// ============================================================================
+// The structural gate above plants magic markers into specific fields and
+// asserts the renderer doesn't forward them. It does NOT test whether actual
+// SFDR / UK SDR scoring functions emit clean rationale text. The methodology
+// gap audit (Tier 1 item #2) identified that scoring functions inline
+// verbatim regulatory citations (`FCA PS23/16 ¶X.Y`), numeric thresholds
+// (`≤1.3 cool / ≤1.4 warm`), and methodology version stamps (`v3.5`) into
+// `rationale_text` — all of which are paid-tier-only.
+//
+// This new test runs the engine with the REAL framework set + scoring
+// functions, generates a SnapshotOutput, and walks the serialized JSON
+// asserting no leak patterns appear. Each regex carries a comment naming
+// the leak it prevents. Failing this test means a scoring function emitted
+// paid-tier content into a free-tier field — fix the scoring function
+// (move the citation into `regulatory_citations`), not the test.
+// ============================================================================
+
+import path from "node:path";
+import { DeterministicEngine } from "../../runtime";
+import { loadKnowledgeBase } from "../../knowledge/load";
+import { METHODOLOGY_VERSION } from "../../lib/methodologyVersion";
+import type { ProjectInput } from "../../engine";
+import type { EntityInput } from "../../inputs";
+
+// Patterns that MUST NOT appear anywhere in the serialized SnapshotOutput.
+// Each pattern is paired with a human description so the failure message
+// names the leak category.
+const DISALLOWED_CONTENT_PATTERNS: { pattern: RegExp; description: string }[] = [
+  {
+    pattern: /¶\s*\d+\.\d+/,
+    description: "paragraph mark + paragraph number (e.g. '¶4.23')",
+  },
+  {
+    pattern: /\bPS23\/16\b/,
+    description: "FCA PS23/16 regulation reference",
+  },
+  {
+    pattern: /\bv3\.\d+\b/,
+    description: "methodology version stamp (e.g. 'v3.5')",
+  },
+  {
+    pattern: /(?:≤|≥)\s*\d+(?:\.\d+)?/,
+    description: "Unicode threshold comparator + number (e.g. '≤1.3')",
+  },
+];
+
+// Build a minimal project input that exercises both SFDR and UK SDR scoring
+// paths so all scoring functions get a chance to emit rationale text. The
+// project carries no SFDR / UK SDR specifics; criteria resolve to
+// insufficient_evidence — which is the path where rationale text matters
+// most because the free-tier reader is being told WHY the verdict is
+// insufficient. Citations leaked here would be the most visible leak.
+const SNAPSHOT_GATE_PROJECT: ProjectInput = {
+  project_id: "p_gate_content_walk",
+  intake_timestamp: "2026-06-04T00:00:00Z",
+  facility_type: "hyperscale",
+  jurisdiction: "DE",
+  facility_status: "operational",
+  data_points: {},
+  evidence_documents: [],
+};
+
+const SNAPSHOT_GATE_ENTITY: EntityInput = {
+  entity_id: "e_gate_content_walk",
+  legal_name: "Gate Content-Walk Test Entity",
+  jurisdiction: "DE",
+};
+
+async function runEngineAcrossAllFrameworks() {
+  const kb = await loadKnowledgeBase({
+    rootDir: path.resolve(process.cwd(), "regulatory-knowledge"),
+  });
+  // Real framework set: EU Tax 8.1 + SFDR Art 8 + SFDR Art 9 + UK SDR
+  // Focus + Improvers + Impact. Exercises every scoring function that
+  // could leak content into rationale strings.
+  const frameworkIds = [
+    "eu_tax_climate_8_1",
+    "sfdr_v1_article_8",
+    "sfdr_v1_article_9",
+    "uk_sdr_focus",
+    "uk_sdr_improvers",
+    "uk_sdr_impact",
+  ];
+  const frameworks = frameworkIds.map((id) => {
+    const fw = kb.frameworksById.get(id);
+    if (!fw) throw new Error(`framework ${id} missing from KB`);
+    return fw;
+  });
+  const engine = new DeterministicEngine({
+    engine_commit_sha: "gate_content_walk_sha",
+    knowledge_base_hash: "gate_content_walk_kb_hash",
+    methodology_version: METHODOLOGY_VERSION,
+    now: () => "2026-06-04T00:00:00.000Z",
+    generateId: () => "test_run_gate_content_walk",
+  });
+  return engine.run(
+    { project: SNAPSHOT_GATE_PROJECT, entity: SNAPSHOT_GATE_ENTITY },
+    frameworks,
+  );
+}
+
+describe("SnapshotRenderer — CONTENT WALK on real scoring output (v0.6.2)", () => {
+  test("no regulatory citation, paragraph number, methodology version, or numeric threshold appears in serialized SnapshotOutput", async () => {
+    const renderer = new SnapshotRenderer({
+      disclaimer: "Article 26 disclaimer text.",
+      now: () => "2026-06-04T00:00:00Z",
+    });
+    const run = await runEngineAcrossAllFrameworks();
+    const snapshot = await renderer.render(run);
+    const serialized = JSON.stringify(snapshot);
+
+    for (const { pattern, description } of DISALLOWED_CONTENT_PATTERNS) {
+      const m = serialized.match(pattern);
+      assert.ok(
+        m === null,
+        `GATE LEAK (content walk): ${description} matched at "${m?.[0]}" — ` +
+          `a scoring function inlined paid-tier content into a free-tier field. ` +
+          `Move it to CriterionResult.regulatory_citations (paid-tier-only).\n` +
+          `Full match context: "${serialized.slice(
+            Math.max(0, (m?.index ?? 0) - 80),
+            Math.min(serialized.length, (m?.index ?? 0) + (m?.[0]?.length ?? 0) + 80),
+          )}"`,
+      );
+    }
+  });
+
+  test("snapshot has populated heatmap + gap_list (sanity — content walk must not pass on a degenerate empty output)", async () => {
+    const renderer = new SnapshotRenderer({
+      disclaimer: "Article 26 disclaimer text.",
+      now: () => "2026-06-04T00:00:00Z",
+    });
+    const run = await runEngineAcrossAllFrameworks();
+    const snapshot = await renderer.render(run);
+    assert.ok(snapshot.heatmap.length > 0, "heatmap must be populated");
+    // gap_list might be empty depending on engine output; not a strict invariant.
   });
 });

@@ -417,6 +417,11 @@ export interface SFDRCriterionScore {
   evidence_refs?: string[];
   not_applicable_rationale?: string;
   numeric_value?: { value: number; unit: string; label: string };
+  // v0.6.2: paid-tier-only regulatory citations (e.g.
+  // ["FCA PS23/16 ¶4.23"]). Forwarded by the orchestrator's scoreToResult
+  // into CriterionResult.regulatory_citations. Never reaches free-tier
+  // SnapshotOutput per snapshot.gate.test.ts DISALLOWED_KEYS walk.
+  regulatory_citations?: string[];
 }
 
 // -- UK SDR input types (v0.6.0 — Phase 2, UK SDR implementation) ------------

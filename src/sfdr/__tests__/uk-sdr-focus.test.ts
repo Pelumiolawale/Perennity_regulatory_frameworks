@@ -101,6 +101,29 @@ describe("UK SDR c1 — asset sustainability profile", () => {
     const r = uk_sdr_c1_asset_sustainability_profile(ctx({}));
     assert.equal(r.band, "insufficient_evidence");
   });
+
+  // v0.6.2 (Tier 1 audit item #3): explicit not_applicable handling.
+  // When EU Tax 8.1 is scored but returns overall_verdict "not_applicable"
+  // (developer made no Taxonomy claim — the regulatorily correct path for
+  // many real DC engagements under SFDR Art 8 light-green positioning),
+  // c1 must return not_aligned with rationale naming the unmet dependency
+  // — NOT fall through to the catch-all "claim made and rejected" branch
+  // (which was the v0.6.0 behaviour, semantically misleading).
+  test("not_aligned: EU Tax 8.1 not_applicable (no Taxonomy claim made)", () => {
+    const r = uk_sdr_c1_asset_sustainability_profile(
+      ctx({
+        uk_sdr: { sustainability_standard_claimed: "eu_taxonomy_8_1" },
+        framework_results: new Map([
+          ["eu_tax_climate_8_1", fakeEUTaxResult("not_applicable")],
+        ]),
+      }),
+    );
+    assert.equal(r.band, "not_aligned");
+    assert.match(r.rationale_text, /no claim|not applicable|Taxonomy claim/i);
+    // Confirm the rationale points the developer at alternative standards
+    // rather than implying their Taxonomy claim was rejected.
+    assert.match(r.rationale_text, /LEED Platinum|SBTi|alternative/i);
+  });
 });
 
 describe("UK SDR c2 — credible sustainability standard", () => {

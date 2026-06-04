@@ -173,7 +173,7 @@ export const art9_c8_si_objective_qualification: SFDRScoringFn = (ctx) => {
     rationale = `9(3) carbon-reduction sub-case applies and is partially evidenced (one of {SBTi-validated + net-zero, EU CTB/PAB alignment, IEA NZE pathway} is present; others incomplete).`;
   } else if (!dominancePass) {
     band = "not_aligned";
-    rationale = `SI objective "${obj.name}" fails the v3.5 dominance test (would the project exist absent the SI objective? yes) and does not meet the indicator threshold — sustainability presents as a bolt-on rather than the load-bearing element of the deal thesis.`;
+    rationale = `SI objective "${obj.name}" fails the dominance test (would the project exist absent the SI objective? yes) and does not meet the indicator threshold — sustainability presents as a bolt-on rather than the load-bearing element of the deal thesis.`;
   } else {
     band = "not_aligned";
     rationale = `SI objective "${obj.name}" declared but contribution evidence is below threshold (${recognisedSourceCount}/3 recognised-source quantified indicators).`;
@@ -274,11 +274,11 @@ export const art9_c9_si_eligibility_evidence_pack: SFDRScoringFn = (ctx) => {
     if (ep.assurance_tier === undefined) {
       rationale = `All five components aligned but at least one is management-prepared rather than auditor-attested; for SI-eligible Art 9 lift, components 1–3 require auditor or technical-advisor attestation.`;
     } else {
-      rationale = `All five components aligned but attestation does not reach the v3.5 Tier 1/2 bar for aligned: ${attestationDescriptor}. v3.5 caps at partially_aligned when assurance is Tier 3 (limited assurance with partial scope or material qualifications) or Tier 4 (management-only).`;
+      rationale = `All five components aligned but attestation does not reach the Tier 1/2 bar for aligned: ${attestationDescriptor}. The aligned tier caps at partially_aligned when assurance is Tier 3 (limited assurance with partial scope or material qualifications) or Tier 4 (management-only).`;
     }
   } else if (anyPartial) {
     band = "partially_aligned";
-    rationale = `Evidence pack has ≥1 component partially_aligned: ${components.filter((c) => c.verdict === "partially_aligned").map((c) => c.name).join("; ")}.`;
+    rationale = `Evidence pack has at least one component partially_aligned: ${components.filter((c) => c.verdict === "partially_aligned").map((c) => c.name).join("; ")}.`;
   } else {
     band = "partially_aligned";
     rationale = `Evidence pack components present but verdicts uneven across components 1–5.`;
@@ -432,7 +432,7 @@ export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
     // Candidate for aligned — verification gate decides.
     if (requiresExtraVerification && !meetsExtraVerification) {
       band = "partially_aligned";
-      rationale = `All 11 PAIs present with methodology; recent; structured form provided. But criterion 3 (entity PAI policy) is ${c3?.band ?? "missing"}; under v3.5 verification gate this requires ≥9 of 11 PAIs to be third-party-verified. Currently ${thirdPartyVerified}/11 third-party-verified — band caps at partially_aligned.`;
+      rationale = `All 11 PAIs present with methodology; recent; structured form provided. But criterion 3 (entity PAI policy) is ${c3?.band ?? "missing"}; under the verification gate this requires the majority of PAIs to be third-party-verified. Currently ${thirdPartyVerified}/11 third-party-verified — band caps at partially_aligned.`;
     } else {
       band = "aligned";
       const formNote =
@@ -440,9 +440,9 @@ export const art9_c10_project_pai_data_provision: SFDRScoringFn = (ctx) => {
         pd.machine_readable_form === "structured_html"
           ? ` Data delivered in structured ${pd.machine_readable_form === "structured_pdf" ? "PDF appendix" : "HTML appendix"} form; PB produces the FMP-ready machine-readable file as part of the engagement deliverable.`
           : "";
-      rationale = `All 11 PAIs present with methodology, recent (≤12mo).${formNote}${
+      rationale = `All 11 PAIs present with methodology, recent.${formNote}${
         requiresExtraVerification
-          ? ` Verification gate cleared: ${thirdPartyVerified}/11 PAIs third-party-verified (criterion 3 weak — ≥9 required).`
+          ? ` Verification gate cleared: ${thirdPartyVerified}/11 PAIs third-party-verified (criterion 3 weak — additional verification required).`
           : " Criterion 3 aligned — no additional verification required."
       }`;
     }

@@ -47,40 +47,54 @@ function getProjectUKSDR(ctx: SFDRScoringContext): ProjectUKSDRInputs | undefine
   return ctx.project.uk_sdr;
 }
 
-function insufficient(rationale: string): SFDRCriterionScore {
-  return { band: "insufficient_evidence", rationale_text: rationale };
+// v0.6.2: every helper takes an optional `citations` array for paid-tier
+// regulatory citation strings. These are forwarded by the orchestrator into
+// CriterionResult.regulatory_citations and explicitly blocked from
+// SnapshotOutput by the structural gate. NEVER inline citations into the
+// `rationale` string — that's the free-tier leak the gate test catches.
+
+function insufficient(rationale: string, citations?: string[]): SFDRCriterionScore {
+  const out: SFDRCriterionScore = { band: "insufficient_evidence", rationale_text: rationale };
+  if (citations && citations.length > 0) out.regulatory_citations = citations;
+  return out;
 }
 
 function aligned(
   rationale: string,
   numeric?: SFDRCriterionScore["numeric_value"],
+  citations?: string[],
 ): SFDRCriterionScore {
   const out: SFDRCriterionScore = { band: "aligned", rationale_text: rationale };
   if (numeric) out.numeric_value = numeric;
+  if (citations && citations.length > 0) out.regulatory_citations = citations;
   return out;
 }
 
 function partially(
   rationale: string,
   numeric?: SFDRCriterionScore["numeric_value"],
+  citations?: string[],
 ): SFDRCriterionScore {
   const out: SFDRCriterionScore = {
     band: "partially_aligned",
     rationale_text: rationale,
   };
   if (numeric) out.numeric_value = numeric;
+  if (citations && citations.length > 0) out.regulatory_citations = citations;
   return out;
 }
 
 function notAligned(
   rationale: string,
   numeric?: SFDRCriterionScore["numeric_value"],
+  citations?: string[],
 ): SFDRCriterionScore {
   const out: SFDRCriterionScore = {
     band: "not_aligned",
     rationale_text: rationale,
   };
   if (numeric) out.numeric_value = numeric;
+  if (citations && citations.length > 0) out.regulatory_citations = citations;
   return out;
 }
 
@@ -131,18 +145,39 @@ export const uk_sdr_c1_asset_sustainability_profile: SFDRScoringFn = (ctx) => {
   const euTax = ctx.framework_results.get("eu_tax_climate_8_1");
   if (!euTax) {
     return insufficient(
-      "EU Taxonomy 8.1 framework not scored in this run. PB methodology v3.5 calibrates the " +
-        "Sustainability Focus 'credible sustainability standard' (PS23/16 ¶4.23) as EU Taxonomy " +
-        "Activity 8.1 alignment for data centres; the upstream assessment must run.",
+      "EU Taxonomy 8.1 framework not scored in this run. PB methodology calibrates the " +
+        "Sustainability Focus 'credible sustainability standard' as EU Taxonomy Activity 8.1 " +
+        "alignment for data centres; the upstream assessment must run.",
+      ["FCA PS23/16 ¶4.23"],
+    );
+  }
+  // v0.6.2 (Tier 1 audit item #3): explicit handling for EU Tax 8.1
+  // overall_verdict === "not_applicable". This fires when the developer
+  // makes no Taxonomy claim under SFDR Art 8 light-green positioning —
+  // the regulatorily correct path for many real DC engagements. Pre-v0.6.2
+  // this case fell through to the catch-all notAligned branch with
+  // rationale claiming "claim made and rejected," which was semantically
+  // wrong (no claim was made; nothing was rejected). Now returns
+  // not_aligned with rationale citing the unmet credible-standard
+  // dependency and pointing at alternative recognised standards.
+  if (euTax.overall_verdict === "not_applicable") {
+    return notAligned(
+      "EU Taxonomy 8.1 verdict is 'not applicable' — the developer made no claim under Activity 8.1. " +
+        "Sustainability Focus eligibility requires a credible sustainability standard; absent a " +
+        "Taxonomy claim, alternative recognised standards (LEED Platinum with Energy & Atmosphere " +
+        "prerequisites, SBTi) must be claimed and evidenced separately for this label to apply.",
+      { value: 0, unit: "standard", label: "No Taxonomy claim; alternative standard required" },
+      ["FCA PS23/16 ¶4.23"],
     );
   }
   const v = euTax.overall_verdict;
   if (v === "pass" || v === "aligned") {
     return aligned(
       "Asset is aligned with EU Taxonomy Activity 8.1 (data processing, hosting and related " +
-        "activities). Under PB methodology v3.5, this satisfies the Sustainability Focus " +
-        "credible-standard requirement (FCA PS23/16 ¶4.23).",
+        "activities). Under PB methodology, this satisfies the Sustainability Focus " +
+        "credible-standard requirement.",
       { value: 1, unit: "standard", label: "Credible standard: EU Taxonomy 8.1" },
+      ["FCA PS23/16 ¶4.23"],
     );
   }
   if (v === "partial" || v === "partially_aligned") {
@@ -160,11 +195,12 @@ export const uk_sdr_c1_asset_sustainability_profile: SFDRScoringFn = (ctx) => {
     );
   }
   return notAligned(
-    "Asset does not meet EU Taxonomy Activity 8.1 alignment. PB methodology v3.5 calibrates " +
-      "the Sustainability Focus credible-standard requirement as EU Taxonomy 8.1 for data centres; " +
+    "Asset does not meet EU Taxonomy Activity 8.1 alignment. PB methodology calibrates the " +
+      "Sustainability Focus credible-standard requirement as EU Taxonomy 8.1 for data centres; " +
       "alternative credible standards (LEED Platinum + E&A prerequisites) are recognised but must " +
       "be claimed and evidenced separately.",
     { value: 0, unit: "standard", label: "No credible standard met" },
+    ["FCA PS23/16 ¶4.23"],
   );
 };
 
@@ -180,7 +216,7 @@ export const uk_sdr_c2_credible_sustainability_standard: SFDRScoringFn = (ctx) =
   const claimed = uk?.sustainability_standard_claimed;
   if (!claimed) {
     return insufficient(
-      "No sustainability standard claimed by the developer. PB methodology v3.5 recognises EU " +
+      "No sustainability standard claimed by the developer. PB methodology recognises EU " +
         "Taxonomy 8.1, LEED Platinum, and (partially) SBTi as credible standards for data-centre " +
         "Sustainability Focus eligibility.",
     );
@@ -188,9 +224,10 @@ export const uk_sdr_c2_credible_sustainability_standard: SFDRScoringFn = (ctx) =
   const normalised = claimed.toLowerCase();
   if (FULL_CREDIBLE_STANDARDS.has(normalised)) {
     return aligned(
-      `Claimed standard "${claimed}" is recognised by PB methodology v3.5 as a credible ` +
-        "sustainability standard for data-centre assets under FCA PS23/16 ¶4.23.",
+      `Claimed standard "${claimed}" is recognised by PB methodology as a credible ` +
+        "sustainability standard for data-centre assets under the UK SDR Sustainability Focus label.",
       { value: 1, unit: "standing", label: `Recognised credible standard: ${claimed}` },
+      ["FCA PS23/16 ¶4.23"],
     );
   }
   if (PARTIAL_CREDIBLE_STANDARDS.has(normalised)) {
@@ -203,7 +240,7 @@ export const uk_sdr_c2_credible_sustainability_standard: SFDRScoringFn = (ctx) =
     );
   }
   return notAligned(
-    `Claimed standard "${claimed}" is not recognised by PB methodology v3.5 as a credible ` +
+    `Claimed standard "${claimed}" is not recognised by PB methodology as a credible ` +
       "sustainability standard for data-centre assets. Recognised standards: EU Taxonomy 8.1 " +
       "(preferred), LEED Platinum with Energy & Atmosphere prerequisites, SBTi (partial).",
     { value: 0, unit: "standing", label: `Non-recognised standard: ${claimed}` },
@@ -227,10 +264,11 @@ export const uk_sdr_c3_sustainable_proportion_threshold: SFDRScoringFn = (ctx) =
   }
   if (c1.band === "aligned" && c2.band === "aligned") {
     return aligned(
-      "Asset qualifies toward a Sustainability Focus fund's 70% sustainable-assets threshold " +
-        "(FCA PS23/16 ¶4.23). Both upstream gates aligned: credible standard met (c1) and standard " +
-        "is recognised (c2). FMP counts this asset in the fund numerator.",
-      { value: 1, unit: "qualifying_asset", label: "Qualifies for 70% threshold" },
+      "Asset qualifies toward a Sustainability Focus fund's sustainable-assets threshold. " +
+        "Both upstream gates aligned: credible standard met (c1) and standard is recognised (c2). " +
+        "FMP counts this asset in the fund numerator.",
+      { value: 1, unit: "qualifying_asset", label: "Qualifies for fund threshold" },
+      ["FCA PS23/16 ¶4.23"],
     );
   }
   if (
@@ -262,7 +300,7 @@ export const uk_sdr_c4_asset_kpi_reporting: SFDRScoringFn = (ctx) => {
   if (!commit) {
     return insufficient(
       "No KPI reporting commitment provided. Sustainability Focus label requires annual " +
-        "disclosure of asset-level KPIs (PB methodology v3.5: PUE, renewable energy %, GHG Scope 1+2, WUE).",
+        "disclosure of asset-level KPIs (PB methodology: PUE, renewable energy %, GHG Scope 1+2, WUE).",
     );
   }
   const committed = new Set(commit.kpis_committed ?? []);
@@ -273,7 +311,7 @@ export const uk_sdr_c4_asset_kpi_reporting: SFDRScoringFn = (ctx) => {
   if (present.length === REQUIRED_KPIS.length && isAnnual) {
     return aligned(
       "Developer commits to annual reporting of all four required KPIs (PUE, renewable %, " +
-        "GHG, WUE). Meets PB methodology v3.5 reporting expectation for the Sustainability Focus label.",
+        "GHG, WUE). Meets PB methodology reporting expectation for the Sustainability Focus label.",
       {
         value: present.length,
         unit: "KPIs",
@@ -294,7 +332,7 @@ export const uk_sdr_c4_asset_kpi_reporting: SFDRScoringFn = (ctx) => {
   }
   return notAligned(
     `Reporting commitment insufficient: ${present.length} of ${REQUIRED_KPIS.length} required KPIs ` +
-      `committed${isAnnual ? "" : "; cadence not annual"}. PB methodology v3.5 requires all four ` +
+      `committed${isAnnual ? "" : "; cadence not annual"}. PB methodology requires all four ` +
       "KPIs at annual cadence for Sustainability Focus alignment.",
     {
       value: present.length,
@@ -330,7 +368,7 @@ export const uk_sdr_c5_baseline_sustainability_assessment: SFDRScoringFn = (ctx)
   if (!plan?.baseline_metrics) {
     return insufficient(
       "No baseline metrics provided. Sustainability Improvers label requires baseline " +
-        "measurement of current performance against which improvement is assessed (PB methodology v3.5: " +
+        "measurement of current performance against which improvement is assessed (PB methodology: " +
         "current PUE, renewable %, GHG Scope 1+2).",
     );
   }
@@ -338,8 +376,10 @@ export const uk_sdr_c5_baseline_sustainability_assessment: SFDRScoringFn = (ctx)
   if (missing.length === 0) {
     return aligned(
       "Baseline established with all three required metrics (current PUE, renewable %, GHG). " +
-        "Provides credible foundation for improvement trajectory assessment per FCA PS23/16 ¶4.28.",
+        "Provides credible foundation for improvement trajectory assessment under the UK SDR " +
+        "Sustainability Improvers label.",
       { value: present.length, unit: "metrics", label: "Complete baseline" },
+      ["FCA PS23/16 ¶4.28"],
     );
   }
   if (present.length >= 2) {
@@ -365,7 +405,8 @@ export const uk_sdr_c6_improvement_strategy: SFDRScoringFn = (ctx) => {
   if (!strategy) {
     return insufficient(
       "No improvement strategy provided. Sustainability Improvers label requires a credible " +
-        "plan with defined actions and timeline (PS23/16 ¶4.29).",
+        "plan with defined actions and timeline.",
+      ["FCA PS23/16 ¶4.29"],
     );
   }
   const years = strategy.timeline_years;
@@ -373,23 +414,27 @@ export const uk_sdr_c6_improvement_strategy: SFDRScoringFn = (ctx) => {
   if (years !== undefined && years <= 3 && actionCount >= 3) {
     return aligned(
       `Credible improvement strategy: ${years}-year timeline with ${actionCount} specific actions. ` +
-        "Meets PB methodology v3.5 aligned-tier expectation (≤3 years, ≥3 actions) for material improvement.",
+        "Meets PB methodology aligned-tier expectation for a short-horizon plan with concrete actions " +
+        "delivering material improvement.",
       { value: years, unit: "years", label: `${years}-year, ${actionCount}-action plan` },
+      ["FCA PS23/16 ¶4.29"],
     );
   }
   if (years !== undefined && years <= 5 && actionCount >= 1) {
     return partially(
       `Improvement strategy with ${years}-year timeline and ${actionCount} action(s). PB methodology ` +
-        "v3.5 aligned tier requires ≤3-year timeline with ≥3 specific actions; current plan falls " +
-        "in the partial band (≤5 years acceptable with justification).",
+        "aligned tier requires a short-horizon plan with multiple specific actions; current plan falls " +
+        "in the partial band (longer horizon acceptable with justification).",
       { value: years, unit: "years", label: "Extended-timeline plan" },
+      ["FCA PS23/16 ¶4.29"],
     );
   }
   return notAligned(
     `Improvement strategy does not meet credibility threshold: timeline=${years ?? "unspecified"} years, ` +
-      `actions=${actionCount}. PB methodology v3.5 requires a defined timeline (≤5 years) and at least ` +
-      "one specific action; ≤3 years with ≥3 actions for full alignment.",
+      `actions=${actionCount}. PB methodology requires a defined timeline and at least one specific ` +
+      "action; aligned tier additionally requires a short horizon with multiple actions.",
     { value: years ?? 0, unit: "years", label: "Insufficient strategy" },
+    ["FCA PS23/16 ¶4.29"],
   );
 };
 
@@ -404,7 +449,7 @@ export const uk_sdr_c7_improvement_kpi_targets: SFDRScoringFn = (ctx) => {
   if (!targets) {
     return insufficient(
       "No quantified improvement targets provided. Sustainability Improvers label requires " +
-        "quantified targets for the four data-centre KPIs (PB methodology v3.5).",
+        "quantified targets for the four data-centre KPIs (PB methodology).",
     );
   }
   const fields = ["pue_target", "renewable_pct_target", "ghg_reduction_pct", "wue_target"];
@@ -417,7 +462,7 @@ export const uk_sdr_c7_improvement_kpi_targets: SFDRScoringFn = (ctx) => {
   if (quantified.length >= 3 && !baselineWeak) {
     return aligned(
       `Quantified targets for ${quantified.length} of 4 data-centre KPIs provided, anchored to ` +
-        "a credible baseline (c5). Meets PB methodology v3.5 aligned-tier expectation (≥3 quantified targets).",
+        "a credible baseline (c5). Meets PB methodology aligned-tier expectation for material quantified improvement.",
       { value: quantified.length, unit: "KPIs", label: `${quantified.length}/4 quantified targets` },
     );
   }
@@ -429,8 +474,9 @@ export const uk_sdr_c7_improvement_kpi_targets: SFDRScoringFn = (ctx) => {
     );
   }
   return notAligned(
-    `Only ${quantified.length} of 4 KPIs have quantified targets. PB methodology v3.5 requires ` +
-      "≥2 (partial) / ≥3 (aligned) quantified KPI targets for Sustainability Improvers alignment.",
+    `Only ${quantified.length} of 4 KPIs have quantified targets. PB methodology requires ` +
+      "multiple quantified KPI targets for Sustainability Improvers alignment; the aligned tier " +
+      "requires more than the partial band.",
     { value: quantified.length, unit: "KPIs", label: `${quantified.length}/4 quantified targets` },
   );
 };
@@ -444,7 +490,8 @@ export const uk_sdr_c8_progress_monitoring: SFDRScoringFn = (ctx) => {
   if (!commit) {
     return insufficient(
       "No progress monitoring commitment provided. Sustainability Improvers label requires " +
-        "an explicit reporting commitment against the improvement plan (PS23/16 ¶4.31).",
+        "an explicit reporting commitment against the improvement plan.",
+      ["FCA PS23/16 ¶4.31"],
     );
   }
   const isAnnual = commit.reporting_frequency === "annual";
@@ -454,24 +501,27 @@ export const uk_sdr_c8_progress_monitoring: SFDRScoringFn = (ctx) => {
   if (isAnnual && hasVerification) {
     return aligned(
       "Annual progress reporting with stated verification mechanism " +
-        `(${commit.verification_method}). Meets PB methodology v3.5 aligned-tier expectation for ` +
+        `(${commit.verification_method}). Meets PB methodology aligned-tier expectation for ` +
         "Sustainability Improvers progress monitoring.",
       { value: 1, unit: "cadence", label: "Annual + verified" },
+      ["FCA PS23/16 ¶4.31"],
     );
   }
   if (isAnnual) {
     return partially(
-      "Annual progress reporting committed but no verification mechanism stated. PB methodology v3.5 " +
+      "Annual progress reporting committed but no verification mechanism stated. PB methodology " +
         "aligned tier requires both annual cadence and a stated verification mechanism (third-party " +
         "assurance or independent technical audit).",
       { value: 0.5, unit: "cadence", label: "Annual without verification" },
+      ["FCA PS23/16 ¶4.31"],
     );
   }
   return notAligned(
     "Progress monitoring commitment does not meet annual cadence (current: " +
-      `${commit.reporting_frequency ?? "unspecified"}). PS23/16 ¶4.31 expects at least annual reporting ` +
-      "against the improvement plan.",
+      `${commit.reporting_frequency ?? "unspecified"}). UK SDR Sustainability Improvers expects at least ` +
+      "annual reporting against the improvement plan.",
     { value: 0, unit: "cadence", label: "Insufficient cadence" },
+    ["FCA PS23/16 ¶4.31"],
   );
 };
 
@@ -503,9 +553,10 @@ export const uk_sdr_c9_improvement_proportion_threshold: SFDRScoringFn = (ctx) =
 
   if (alignedCount === 4) {
     return aligned(
-      "Asset qualifies toward a Sustainability Improvers fund's 70% threshold (FCA PS23/16 ¶4.28). " +
-        "All four upstream Improvers gates aligned (baseline, strategy, targets, monitoring).",
-      { value: 1, unit: "qualifying_asset", label: "Qualifies for 70% threshold" },
+      "Asset qualifies toward a Sustainability Improvers fund's threshold. All four upstream " +
+        "Improvers gates aligned (baseline, strategy, targets, monitoring).",
+      { value: 1, unit: "qualifying_asset", label: "Qualifies for fund threshold" },
+      ["FCA PS23/16 ¶4.28"],
     );
   }
   if (notAlignedCount > 0) {
@@ -541,13 +592,16 @@ export const uk_sdr_c10_impact_objective: SFDRScoringFn = (ctx) => {
   if (!plan) {
     return insufficient(
       "No impact plan provided. Sustainability Impact label requires a specific positive " +
-        "sustainability outcome objective (PS23/16 ¶4.32).",
+        "sustainability outcome objective.",
+      ["FCA PS23/16 ¶4.32"],
     );
   }
   if (!hasImpactObjectiveContent(plan)) {
     return notAligned(
-      "Impact plan present but no impact objective named. PS23/16 ¶4.32 requires a specific, " +
-        "measurable impact objective.",
+      "Impact plan present but no impact objective named. Sustainability Impact label requires a " +
+        "specific, measurable impact objective.",
+      undefined,
+      ["FCA PS23/16 ¶4.32"],
     );
   }
   const hasCategory = !!plan.objective_category && plan.objective_category.length > 0;
@@ -557,22 +611,25 @@ export const uk_sdr_c10_impact_objective: SFDRScoringFn = (ctx) => {
     return aligned(
       `Impact objective "${plan.impact_objective}" is named, categorised ` +
         `(${plan.objective_category}), and declared in deal-defining documentation (${plan.declared_in}). ` +
-        "Meets PB methodology v3.5 aligned-tier expectation for the Sustainability Impact label.",
+        "Meets PB methodology aligned-tier expectation for the Sustainability Impact label.",
       { value: 1, unit: "objective", label: "Categorised and declared" },
+      ["FCA PS23/16 ¶4.32"],
     );
   }
   if (hasCategory || declared) {
     return partially(
       `Impact objective named ("${plan.impact_objective}") but ` +
         `${hasCategory ? "not declared in deal-defining documentation" : "not categorised against a recognised taxonomy"}. ` +
-        "PB methodology v3.5 aligned tier requires both.",
+        "PB methodology aligned tier requires both.",
       { value: 0.5, unit: "objective", label: "Partial specification" },
+      ["FCA PS23/16 ¶4.32"],
     );
   }
   return partially(
     `Impact objective named ("${plan.impact_objective}") but lacks categorisation and deal-documentation ` +
-      "anchor. PB methodology v3.5 aligned tier requires both for full alignment.",
+      "anchor. PB methodology aligned tier requires both for full alignment.",
     { value: 0.5, unit: "objective", label: "Named only" },
+    ["FCA PS23/16 ¶4.32"],
   );
 };
 
@@ -587,13 +644,16 @@ export const uk_sdr_c11_impact_measurement: SFDRScoringFn = (ctx) => {
   if (!plan) {
     return insufficient(
       "No impact plan provided. Sustainability Impact label requires theory of change with " +
-        "quantified indicators (PS23/16 ¶4.34).",
+        "quantified indicators.",
+      ["FCA PS23/16 ¶4.34"],
     );
   }
   if (c10 && c10.band === "not_aligned") {
     return notAligned(
-      "Cascade rule: c10 (impact objective) is not_aligned, so impact measurement cannot meet " +
-        "PS23/16 ¶4.34 — there is no objective against which to measure.",
+      "Cascade rule: c10 (impact objective) is not_aligned, so impact measurement cannot be " +
+        "satisfied — there is no objective against which to measure.",
+      undefined,
+      ["FCA PS23/16 ¶4.34"],
     );
   }
   const hasToC = !!plan.theory_of_change && plan.theory_of_change.trim().length > 0;
@@ -609,35 +669,38 @@ export const uk_sdr_c11_impact_measurement: SFDRScoringFn = (ctx) => {
   if (hasToC && wellFormedIndicators.length >= 3) {
     return aligned(
       `Theory of change documented with ${wellFormedIndicators.length} well-formed quantified ` +
-        "indicators. Meets PB methodology v3.5 aligned-tier expectation (written ToC + ≥3 quantified indicators).",
+        "indicators. Meets PB methodology aligned-tier expectation (written ToC plus multiple quantified indicators).",
       {
         value: wellFormedIndicators.length,
         unit: "indicators",
         label: `${wellFormedIndicators.length} quantified indicators`,
       },
+      ["FCA PS23/16 ¶4.34"],
     );
   }
   if (hasToC || wellFormedIndicators.length >= 2) {
     return partially(
       `${hasToC ? "Theory of change present" : "No documented theory of change"}; ` +
-        `${wellFormedIndicators.length} quantified indicator(s) provided. PB methodology v3.5 aligned ` +
-        "tier requires both ToC and ≥3 quantified indicators.",
+        `${wellFormedIndicators.length} quantified indicator(s) provided. PB methodology aligned ` +
+        "tier requires both a ToC and multiple quantified indicators.",
       {
         value: wellFormedIndicators.length,
         unit: "indicators",
         label: `${wellFormedIndicators.length} quantified indicators`,
       },
+      ["FCA PS23/16 ¶4.34"],
     );
   }
   return notAligned(
     `Insufficient measurement: ToC ${hasToC ? "present" : "absent"}, ` +
-      `${wellFormedIndicators.length} quantified indicators. PB methodology v3.5 requires both ` +
-      "a written theory of change and ≥3 quantified contribution indicators.",
+      `${wellFormedIndicators.length} quantified indicators. PB methodology requires both ` +
+      "a written theory of change and multiple quantified contribution indicators.",
     {
       value: wellFormedIndicators.length,
       unit: "indicators",
       label: `${wellFormedIndicators.length} quantified indicators`,
     },
+    ["FCA PS23/16 ¶4.34"],
   );
 };
 
@@ -648,29 +711,33 @@ export const uk_sdr_c12_impact_additionality: SFDRScoringFn = (ctx) => {
   const plan = getProjectUKSDR(ctx)?.impact_plan;
   if (!plan) {
     return insufficient(
-      "No impact plan provided. Sustainability Impact label requires explicit additionality " +
-        "evidence (PS23/16 ¶4.35).",
+      "No impact plan provided. Sustainability Impact label requires explicit additionality evidence.",
+      ["FCA PS23/16 ¶4.35"],
     );
   }
   const evidence = plan.additionality_evidence;
   if (!evidence || evidence.trim().length === 0) {
     return notAligned(
-      "No additionality evidence provided. PS23/16 ¶4.35 requires the asset's contribution to be " +
-        "material and attributable; PB methodology v3.5 requires written additionality narrative " +
-        "(counterfactual, sustainability-linked capital structure, or step-change evidence).",
+      "No additionality evidence provided. The Sustainability Impact label requires the asset's " +
+        "contribution to be material and attributable; PB methodology requires written additionality " +
+        "narrative (counterfactual, sustainability-linked capital structure, or step-change evidence).",
+      undefined,
+      ["FCA PS23/16 ¶4.35"],
     );
   }
   if (evidence.length >= 200) {
     return aligned(
-      "Substantive additionality evidence provided (>200 characters). Meets PB methodology v3.5 " +
-        "aligned-tier expectation for explicit attribution of impact to this asset/financing.",
+      "Substantive additionality evidence provided. Meets PB methodology aligned-tier expectation " +
+        "for explicit attribution of impact to this asset/financing.",
       { value: evidence.length, unit: "chars", label: "Substantive narrative" },
+      ["FCA PS23/16 ¶4.35"],
     );
   }
   return partially(
     `Additionality narrative is brief (${evidence.length} characters). Acceptable as partial ` +
       "evidence; full alignment requires substantive explanation of counterfactual or attribution mechanism.",
     { value: evidence.length, unit: "chars", label: "Brief narrative" },
+    ["FCA PS23/16 ¶4.35"],
   );
 };
 
@@ -699,9 +766,10 @@ export const uk_sdr_c13_impact_proportion_threshold: SFDRScoringFn = (ctx) => {
 
   if (alignedCount === 3) {
     return aligned(
-      "Asset qualifies toward a Sustainability Impact fund's 70% threshold (FCA PS23/16 ¶4.32). " +
-        "All three upstream Impact gates aligned (objective, measurement, additionality).",
-      { value: 1, unit: "qualifying_asset", label: "Qualifies for 70% threshold" },
+      "Asset qualifies toward a Sustainability Impact fund's threshold. All three upstream " +
+        "Impact gates aligned (objective, measurement, additionality).",
+      { value: 1, unit: "qualifying_asset", label: "Qualifies for fund threshold" },
+      ["FCA PS23/16 ¶4.32"],
     );
   }
   if (notAlignedCount > 0) {
@@ -725,7 +793,8 @@ export const uk_sdr_c14_impact_reporting: SFDRScoringFn = (ctx) => {
   if (!plan?.reporting_commitment) {
     return insufficient(
       "No impact reporting commitment provided. Sustainability Impact label requires annual " +
-        "reporting against the theory of change (PS23/16 ¶4.37).",
+        "reporting against the theory of change.",
+      ["FCA PS23/16 ¶4.37"],
     );
   }
   const c = plan.reporting_commitment;
@@ -744,22 +813,25 @@ export const uk_sdr_c14_impact_reporting: SFDRScoringFn = (ctx) => {
     return aligned(
       "Annual impact reporting committed with all four elements: annual cadence, reporting against " +
         "quantified indicators, outcome-level (not activity-only), and stated verification mechanism. " +
-        "Meets PB methodology v3.5 aligned-tier expectation per PS23/16 ¶4.37.",
+        "Meets PB methodology aligned-tier expectation for Sustainability Impact reporting.",
       { value: passed, unit: "elements", label: `${passed}/4 reporting elements` },
+      ["FCA PS23/16 ¶4.37"],
     );
   }
   if (passed >= 2) {
     const missing = checks.filter((x) => !x.ok).map((x) => x.name);
     return partially(
       `${passed} of 4 reporting elements committed. Missing: ${missing.join(", ")}. ` +
-        "PB methodology v3.5 aligned tier requires all four elements.",
+        "PB methodology aligned tier requires all four elements.",
       { value: passed, unit: "elements", label: `${passed}/4 reporting elements` },
+      ["FCA PS23/16 ¶4.37"],
     );
   }
   return notAligned(
-    `Reporting commitment insufficient: ${passed} of 4 elements committed. PS23/16 ¶4.37 expects ` +
-      "annual outcome-level reporting against the theory of change.",
+    `Reporting commitment insufficient: ${passed} of 4 elements committed. The Sustainability ` +
+      "Impact label expects annual outcome-level reporting against the theory of change.",
     { value: passed, unit: "elements", label: `${passed}/4 reporting elements` },
+    ["FCA PS23/16 ¶4.37"],
   );
 };
 
@@ -773,15 +845,33 @@ export const uk_sdr_c15_no_significant_harm: SFDRScoringFn = (ctx) => {
   const euTax = ctx.framework_results.get("eu_tax_climate_8_1");
   if (!euTax) {
     return insufficient(
-      "EU Taxonomy 8.1 framework not scored in this run. PB methodology v3.5 satisfies the UK SDR " +
-        "Impact no-significant-harm screen (PS23/16 ¶4.38) by reading the EU Taxonomy 8.1 DNSH results; " +
-        "the upstream assessment must run.",
+      "EU Taxonomy 8.1 framework not scored in this run. PB methodology satisfies the UK SDR " +
+        "Impact no-significant-harm screen by reading the EU Taxonomy 8.1 DNSH results; the " +
+        "upstream assessment must run.",
+      ["FCA PS23/16 ¶4.38"],
+    );
+  }
+  // v0.6.2 (Tier 1 audit item #3): explicit handling for EU Tax 8.1
+  // overall_verdict === "not_applicable" — the developer made no Taxonomy
+  // claim. Pre-v0.6.2 this case produced empty dnsh_results and fell through
+  // to "DNSH results are empty" insufficient_evidence, which mis-named the
+  // cause as "data missing" when in fact no DNSH was evaluated upstream
+  // because there was no claim to evaluate. Now returns not_aligned with
+  // rationale naming the unmet dependency.
+  if (euTax.overall_verdict === "not_applicable") {
+    return notAligned(
+      "EU Taxonomy 8.1 verdict is 'not applicable' — the developer made no claim under Activity 8.1. " +
+        "Without Taxonomy alignment, the no-significant-harm screen cannot be satisfied. " +
+        "Sustainability Impact eligibility requires DNSH-equivalent screening; this dependency is unmet.",
+      undefined,
+      ["FCA PS23/16 ¶4.38"],
     );
   }
   const dnshResults = euTax.dnsh_results ?? [];
   if (dnshResults.length === 0) {
     return insufficient(
       "EU Taxonomy 8.1 DNSH results are empty. No-significant-harm screen cannot be assessed.",
+      ["FCA PS23/16 ¶4.38"],
     );
   }
   const failed = dnshResults.filter((r) => r.verdict === "fail").map((r) => r.criterion_id);
@@ -793,25 +883,30 @@ export const uk_sdr_c15_no_significant_harm: SFDRScoringFn = (ctx) => {
   if (failed.length > 0) {
     return notAligned(
       `EU Taxonomy 8.1 DNSH failures prevent UK SDR Impact no-significant-harm clearance: ` +
-        `${failed.join(", ")}. Sustainability Impact label requires the asset to clear DNSH-equivalent ` +
-        "screening per PS23/16 ¶4.38.",
+        `${failed.join(", ")}. Sustainability Impact label requires the asset to clear DNSH-equivalent screening.`,
+      undefined,
+      ["FCA PS23/16 ¶4.38"],
     );
   }
   if (partial.length > 0) {
     return partially(
       `EU Taxonomy 8.1 DNSH is partially aligned on ${partial.join(", ")}. No-significant-harm screen ` +
         "caps at partially aligned pending DNSH gap remediation.",
+      undefined,
+      ["FCA PS23/16 ¶4.38"],
     );
   }
   if (missing.length > 0) {
     return insufficient(
       `EU Taxonomy 8.1 DNSH inputs are missing on ${missing.join(", ")}; cannot confirm no-significant-harm.`,
+      ["FCA PS23/16 ¶4.38"],
     );
   }
   return aligned(
     "EU Taxonomy 8.1 DNSH results clear all criteria (pass or not_applicable). UK SDR Impact " +
-      "no-significant-harm screen (PS23/16 ¶4.38) is satisfied by cross-framework corroboration.",
+      "no-significant-harm screen is satisfied by cross-framework corroboration.",
     { value: 1, unit: "screen", label: "DNSH clear" },
+    ["FCA PS23/16 ¶4.38"],
   );
 };
 

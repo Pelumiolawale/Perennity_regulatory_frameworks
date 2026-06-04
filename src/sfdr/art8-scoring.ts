@@ -277,9 +277,15 @@ export const art8_c3_pai_policy: SFDRScoringFn = (ctx) => {
   return {
     band,
     rationale_text:
+      // v0.6.2: stripped methodology version stamp "(v3.5)" from rationale —
+      // methodology_version is paid-tier-only per the snapshot allowlist;
+      // the stamp leaks the methodology vintage to free-tier consumers. The
+      // substance-over-citation framing remains in the rationale; the
+      // version anchor lives in paid-tier `methodology_version` on
+      // ReportOutput.
       `${pais_full}/${MATERIAL_PAI_NUMBERS.length} material PAIs fully evidenced; ` +
       `statement age ${recencyDays === Number.POSITIVE_INFINITY ? "unknown" : `${recencyDays} days`}. ` +
-      `Substance-based assessment (v3.5): Art 4 explicit citation is not required for developer-investees.`,
+      `Substance-based assessment: explicit Article 4 citation is not required for developer-investees; the four content pillars (material PAIs identified, targets, actions, due diligence) are the operative test.`,
     evidence_refs: pai.statement_url ? [pai.statement_url] : [],
     numeric_value: {
       value: pais_full,
@@ -361,8 +367,14 @@ export const art8_c4_dnsh: SFDRScoringFn = (ctx) => {
     const alignedTier = checkPUEAlignedTier(dnsh);
     if (alignedTier === "below_aligned_tier") {
       band = "partially_aligned";
+      // v0.6.2: stripped "v3.5 PB-conservatism gate" methodology stamp +
+      // verbatim threshold values "cool ≤1.2 / warm ≤1.3" from rationale.
+      // The threshold values are paid-tier-only; their absence here doesn't
+      // change the verdict (caller still returns partially_aligned). Paid
+      // renderers reading numeric_value can surface the thresholds; the
+      // free-tier rationale describes the gate outcome qualitatively.
       extraRationale =
-        " v3.5 PB-conservatism gate: all PAIs clear no_harm but new-build PUE is above the aligned-tier threshold (cool ≤1.2 / warm ≤1.3); criterion 4 caps at partially_aligned.";
+        " PB-conservatism gate: all PAIs clear no_harm but new-build PUE is above the aligned-tier threshold for the project's climate zone; criterion 4 caps at partially_aligned.";
     } else {
       band = "aligned";
     }
