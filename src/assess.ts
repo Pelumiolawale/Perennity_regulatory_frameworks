@@ -37,6 +37,7 @@ import type { FrameworkResult } from "./engine";
 import { buildBenchmarkRecord } from "./benchmark/anonymise";
 import { emitBenchmark, type EmitResult } from "./benchmark/emit";
 import type { BenchmarkRecord, StorageAdapter } from "./benchmark/types";
+import { resolveBenchmarkSalt, type SaltSource } from "./benchmark/salt";
 import { ENGINE_V4_VERSION } from "./v4/meta";
 
 export interface AssessOptions {
@@ -47,8 +48,21 @@ export interface AssessOptions {
   alignmentScorePercent?: number | null;
   /** Storage adapter for the benchmark residue. When omitted, no record is stored (still built). */
   storageAdapter?: StorageAdapter;
-  /** Salt for the anonymised asset-id hash. */
+  /**
+   * Salt for the anonymised asset-id hash. In production this is left unset and
+   * resolved from the PERENNITY_BENCHMARK_SALT environment variable instead —
+   * the salt must never be passed in from a browser context. See salt.ts.
+   */
   benchmarkSalt?: string;
+  /**
+   * Benchmark emission is ON BY DEFAULT (Task 3). Set false to opt out for a
+   * single run — e.g. a dry-run or a replay that must not accrue residue.
+   */
+  benchmarkEnabled?: boolean;
+  /** Environment to resolve the salt from. Injectable for tests. */
+  env?: Record<string, string | undefined>;
+  /** Sink for benchmark warnings. Defaults to console.warn. Injectable for tests. */
+  benchmarkLogger?: (message: string) => void;
   /** ISO assessment date. Defaults to the project's intake_timestamp (deterministic). */
   assessmentDate?: string;
   /** Restrict which lenses to run (by id). */
@@ -63,6 +77,13 @@ export interface AssessmentResult {
   legacyFrameworkResults: FrameworkResult[];
   benchmarkRecord: BenchmarkRecord;
   benchmarkEmit?: EmitResult;
+  /**
+   * Where the hashing salt came from. `"none"` means NO usable salt was found,
+   * the record was built with the non-secret default for in-memory shape
+   * compatibility ONLY, and emission was skipped. A `"none"` record must never
+   * be persisted by a caller — its hash is not identity-safe.
+   */
+  benchmarkSaltSource: SaltSource;
   engineVersion: string;
   configVersion: string;
 }
@@ -102,16 +123,51 @@ export async function assess(
     lensVerdictToFrameworkResult(v, canonical),
   );
 
-  // 5. Emit the benchmark residue (non-blocking + failure-isolated).
+  // 5. Emit the benchmark residue — ON BY DEFAULT (Task 3), non-blocking and
+  //    failure-isolated. Two independent conditions must BOTH hold to write:
+  //      (a) a usable salt resolved (explicit option, or the env var), and
+  //      (b) a storage adapter is available.
+  //    Either missing => skip + warn. We never write weakly-hashed data, and a
+  //    missing sink is not an error the assessment should care about.
   const assessmentDate = opts.assessmentDate ?? project.intake_timestamp;
+  const log = opts.benchmarkLogger ?? ((m: string) => console.warn(m));
+  const enabled = opts.benchmarkEnabled !== false;
+
+  const saltResolution = resolveBenchmarkSalt({
+    explicit: opts.benchmarkSalt,
+    env: opts.env,
+  });
+
   const benchmarkRecord = buildBenchmarkRecord(canonical, verdicts, {
     engineVersion: ENGINE_V4_VERSION,
     assessmentDate,
-    salt: opts.benchmarkSalt,
+    // null salt => buildBenchmarkRecord uses its non-secret default. The record
+    // is still returned for in-memory use, but the guard below refuses to emit
+    // it. benchmarkSaltSource on the result makes that state auditable.
+    salt: saltResolution.salt ?? undefined,
   });
+
   let benchmarkEmit: EmitResult | undefined;
-  if (opts.storageAdapter) {
-    benchmarkEmit = await emitBenchmark(benchmarkRecord, opts.storageAdapter);
+  if (!enabled) {
+    benchmarkEmit = {
+      emitted: false,
+      adapter: "none",
+      error: "benchmark emission disabled for this run (benchmarkEnabled:false)",
+    };
+  } else if (saltResolution.salt === null) {
+    // FAIL SAFE. This is the load-bearing branch: no salt => no write, ever.
+    const reason = saltResolution.reason ?? "no benchmark salt available";
+    log(`[benchmark] ${reason}`);
+    benchmarkEmit = { emitted: false, adapter: "none", error: reason };
+  } else if (!opts.storageAdapter) {
+    const reason =
+      "benchmark salt resolved but no storage adapter supplied — record built, not stored";
+    log(`[benchmark] ${reason}`);
+    benchmarkEmit = { emitted: false, adapter: "none", error: reason };
+  } else {
+    benchmarkEmit = await emitBenchmark(benchmarkRecord, opts.storageAdapter, {
+      logger: log,
+    });
   }
 
   return {
@@ -121,6 +177,7 @@ export async function assess(
     legacyFrameworkResults,
     benchmarkRecord,
     benchmarkEmit,
+    benchmarkSaltSource: saltResolution.source,
     engineVersion: ENGINE_V4_VERSION,
     configVersion: config.configVersion,
   };

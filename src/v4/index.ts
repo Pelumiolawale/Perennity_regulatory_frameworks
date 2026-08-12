@@ -90,6 +90,15 @@ export type { BenchmarkOptions } from "../benchmark/anonymise";
 export { emitBenchmark } from "../benchmark/emit";
 export type { EmitResult, EmitOptions } from "../benchmark/emit";
 export { JsonlStorageAdapter, InMemoryStorageAdapter } from "../benchmark/jsonlAdapter";
+// Task 3 — datastore + fail-safe salt resolution.
+export { PostgresStorageAdapter, BENCHMARK_TABLE } from "../benchmark/postgresAdapter";
+export type { SqlClient, PostgresStorageAdapterOptions } from "../benchmark/postgresAdapter";
+export {
+  resolveBenchmarkSalt,
+  BENCHMARK_SALT_ENV_VAR,
+  MIN_SALT_LENGTH,
+} from "../benchmark/salt";
+export type { SaltResolution, SaltSource, ResolveSaltOptions } from "../benchmark/salt";
 export type {
   BenchmarkRecord,
   BenchmarkLensHeadline,
