@@ -265,3 +265,44 @@ export type {
   ICArchetype,
   Signatory,
 } from "./engine";
+
+// --- v4 framework-modular lens architecture (Engine v4.0) -------------------
+// ADDITIVE. The default entrypoint's v3.5 output shape (DeterministicEngine,
+// renderers, renderContract, BUNDLED_*) is UNCHANGED — the SPA compatibility
+// contract holds. These re-exports surface the new lens API alongside it; the
+// full v4 surface is also available under the "@perennity/engine/v4" subpath.
+export {
+  assess,
+  normalise,
+  EULens,
+  UKSDRLens,
+  USSocialLicenseLens,
+  LensRegistry,
+  createDefaultLensRegistry,
+  loadConfig,
+  loadConfigV1,
+  contestedItems,
+  buildBenchmarkRecord,
+  emitBenchmark,
+  JsonlStorageAdapter,
+  InMemoryStorageAdapter,
+  lensVerdictToFrameworkResult,
+  TRILOGUE_TRACKING,
+  buildTrilogueTracking,
+  ENGINE_V4_VERSION,
+} from "./v4";
+export type {
+  CanonicalAssessment,
+  LensVerdict,
+  FrameworkLens,
+  VerdictBand,
+  VerdictSection,
+  EvidenceGap,
+  Citation,
+  RegulatoryConfig,
+  BenchmarkRecord,
+  StorageAdapter,
+  AssessOptions,
+  AssessmentResult,
+  TrilogueTracking,
+} from "./v4";
