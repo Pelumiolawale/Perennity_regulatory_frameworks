@@ -1,0 +1,97 @@
+{
+  "configVersion": "v1",
+  "methodologyStatus": "4.0-draft",
+  "lastReviewed": "2026-08-12",
+  "source": "SFDR 2.0 proposal COM(2025) 841 (20 Nov 2025); PB Intelligence Dossier §1.4. Trilogue expected early Q4 2026; text NOT final. All values below are draft/proposal-stage and subject to change through trilogue.",
+  "thresholds": {
+    "portfolioPositiveContributionPercent": {
+      "value": 70,
+      "source": "SFDR 2.0 proposal — general 70% portfolio positive-contribution threshold (sovereigns broadly excluded from the 70% test).",
+      "status": "contested",
+      "lastReviewed": "2026-08-12",
+      "notes": "Trilogue battleground (4): thresholds/safe harbours including the 70% test. Sovereign exclusion scope also unsettled. This is a fund-level threshold surfaced by the engine as a fund-manager-facing note — never a pass/fail on the asset."
+    },
+    "taxonomySafeHarbourPercent": {
+      "value": 15,
+      "source": "SFDR 2.0 proposal — Commission baseline: 15% EU Taxonomy alignment auto-qualifies (safe harbour).",
+      "status": "contested",
+      "lastReviewed": "2026-08-12",
+      "notes": "Trilogue battleground (4): Parliament wants this raised to 20% and the CTB/PAB benchmark safe harbour removed. Named contested item #1."
+    },
+    "esgBasicsBottomScreenPercent": {
+      "value": 20,
+      "source": "SFDR 2.0 proposal — Parliament position: ESG Basics claim requires screening out at least the bottom 20% of rated securities before an ESG-outperformance claim.",
+      "status": "contested",
+      "lastReviewed": "2026-08-12",
+      "notes": "Parliament-only position; Council/Commission have no equivalent screen. Applied to the ESG Basics category only."
+    },
+    "mandatoryPaiCount": {
+      "value": 3,
+      "source": "SFDR 2.0 proposal — Council position: >=3 mandatory PAI indicators from a forthcoming Commission list (+ a 4th adverse-impact indicator TBD).",
+      "status": "contested",
+      "lastReviewed": "2026-08-12",
+      "notes": "Trilogue battleground (3): PAI regime voluntary (some) vs min-3 (Council) vs fully-mandatory with comply-or-explain (Parliament). Named contested item #2. Indicator list itself arrives via delegated acts 2027-28."
+    }
+  },
+  "categoryExclusionScope": {
+    "status": "contested",
+    "source": "SFDR 2.0 proposal — each category carries category-specific exclusions; scope (esp. fossil-fuel exposure in Transition) is unsettled.",
+    "lastReviewed": "2026-08-12",
+    "notes": "Trilogue battleground (1): fossil-fuel exposure in the Transition category (Council supports a capex-based approach to including fossil-exposed issuers). Named contested item #3 (category exclusion scope). The exclusion LISTS below are draft.",
+    "lists": {
+      "sustainable": [
+        "controversial_weapons",
+        "tobacco_production",
+        "thermal_coal_extraction_or_power",
+        "unconventional_oil_and_gas",
+        "severe_environmental_controversy_unremediated"
+      ],
+      "transition": [
+        "controversial_weapons",
+        "tobacco_production",
+        "new_thermal_coal_capacity_without_phaseout_plan"
+      ],
+      "esg_basics": [
+        "controversial_weapons",
+        "un_global_compact_severe_breach_unremediated"
+      ]
+    }
+  },
+  "paiIndicators": {
+    "source": "SFDR 2.0 forthcoming Commission PAI list (delegated acts 2027-28). This is PB's DC-material working set mapped onto SFDR L2 (2022/1288 Annex I Table 1) indicators until the 2.0 list is published.",
+    "status": "contested",
+    "set": [
+      { "id": "pai_1_2_ghg", "name": "GHG emissions (Scope 1/2/3) & carbon footprint", "mandatory": true, "canonicalSignals": ["carbon.scope1", "carbon.scope2Location", "energy.renewableSharePercent"] },
+      { "id": "pai_3_ghg_intensity", "name": "GHG intensity of investee", "mandatory": true, "canonicalSignals": ["carbon.scope2Location"] },
+      { "id": "pai_5_6_energy", "name": "Energy consumption intensity / non-renewable share", "mandatory": true, "canonicalSignals": ["energy.pueOperational", "energy.pueDesign", "energy.renewableSharePercent"] },
+      { "id": "pai_7_biodiversity", "name": "Activities negatively affecting biodiversity-sensitive areas", "mandatory": false, "canonicalSignals": ["water.waterStressBand", "communityLand.noiseLandUsePermittingStatus"] },
+      { "id": "pai_8_water", "name": "Emissions to water / water usage", "mandatory": false, "canonicalSignals": ["water.wue", "water.waterStressBand"] },
+      { "id": "pai_9_waste", "name": "Hazardous & radioactive waste ratio", "mandatory": false, "canonicalSignals": [] },
+      { "id": "pai_13_board_diversity", "name": "Board gender diversity", "mandatory": false, "canonicalSignals": ["governance.thirdPartyVerification"] }
+    ]
+  },
+  "categories": {
+    "sustainable": {
+      "label": "Sustainable (new Art. 9)",
+      "description": "Products contributing to sustainability goals via investments already meeting high standards. Asset-level: can a product in this category fund this asset?",
+      "requiresAlignmentScoreAtOrAbovePercent": 15,
+      "requiresAlignmentScoreThresholdRef": "taxonomySafeHarbourPercent",
+      "requiresNoHarm": true,
+      "requiresVerification": true
+    },
+    "transition": {
+      "label": "Transition (new Art. 7)",
+      "description": "Products channelling capital to companies/projects not yet sustainable but on a credible transition path. Asset-level: can a Transition product fund this asset while it improves?",
+      "requiresCredibleRoadmap": true,
+      "roadmapCredibilityInputs": ["capexLinked", "datedMilestones", "boardApproved"],
+      "roadmapMinCredibilitySignals": 2
+    },
+    "esg_basics": {
+      "label": "ESG Basics (new Art. 8)",
+      "description": "ESG integration beyond risk management, without a transition or sustainability objective. Asset-level: can an ESG Basics product fund this asset?",
+      "requiresBottomScreen": true,
+      "bottomScreenThresholdRef": "esgBasicsBottomScreenPercent",
+      "minDisclosureCompleteness": 0.3
+    }
+  }
+}
