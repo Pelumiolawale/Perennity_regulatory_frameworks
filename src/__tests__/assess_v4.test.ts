@@ -27,7 +27,13 @@ function frankfurt(): ProjectInput {
 
 test("assess() runs normalise -> lenses -> legacy adapter and stores a benchmark record", async () => {
   const adapter = new InMemoryStorageAdapter();
-  const result = await assess(frankfurt(), { storageAdapter: adapter });
+  // Task 3: emission now requires a resolved salt (fail-safe — the engine will
+  // not write weakly-hashed data). Supplying one here keeps this test asserting
+  // what it always asserted: that assess() wires through to the storage sink.
+  const result = await assess(frankfurt(), {
+    storageAdapter: adapter,
+    env: { PERENNITY_BENCHMARK_SALT: "test-salt-long-enough-for-the-guard" },
+  });
 
   // Canonical produced.
   assert.equal(result.canonical.assetId, "PB-FX-001");
