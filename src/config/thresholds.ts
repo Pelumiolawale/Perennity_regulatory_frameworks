@@ -261,6 +261,30 @@ export function loadConfig(raw: unknown): RegulatoryConfig {
     },
   };
 
+  // -- Mirrored-threshold guard (Task 5 / review-pack Finding 1) -------------
+  //
+  // Some category settings carry BOTH a literal value and a `*ThresholdRef`
+  // pointing at the canonical entry in `thresholds`. Only the ref is
+  // load-bearing — the lens resolves thresholds by reference. The literal is a
+  // readability convenience, which makes it a silent-divergence hazard: edit
+  // `taxonomySafeHarbourPercent` 15 -> 20 for the Parliament position, forget
+  // the mirror, and the settings file now shows a stale number that reads like
+  // a live threshold to the next person (or acquirer) who opens it.
+  //
+  // So we fail fast instead of documenting the hazard and hoping. A threshold
+  // edit that misses its mirror breaks the build, not a customer report.
+  // See RUNBOOK-threshold-updates.md.
+  assertMirroredThresholds(
+    [
+      {
+        literal: categories.sustainable.requiresAlignmentScoreAtOrAbovePercent,
+        literalPath: "config.categories.sustainable.requiresAlignmentScoreAtOrAbovePercent",
+        ref: categories.sustainable.requiresAlignmentScoreThresholdRef,
+      },
+    ],
+    thresholds,
+  );
+
   return {
     configVersion,
     methodologyStatus,
@@ -275,6 +299,43 @@ export function loadConfig(raw: unknown): RegulatoryConfig {
     },
     categories,
   };
+}
+
+interface MirroredThreshold {
+  /** The duplicated literal value carried on the category setting. */
+  literal: number;
+  /** Dotted path to the literal, for the error message. */
+  literalPath: string;
+  /** Key into `thresholds` that holds the canonical, load-bearing value. */
+  ref: string;
+}
+
+/**
+ * Fail fast when a category's mirrored literal has drifted from the canonical
+ * threshold it points at. Also fails when the ref itself does not resolve — a
+ * dangling ref means the lens would read `undefined` at evaluation time, which
+ * is worse than a loud failure at load time.
+ */
+function assertMirroredThresholds(
+  mirrors: MirroredThreshold[],
+  thresholds: Record<string, ThresholdEntry>,
+): void {
+  for (const m of mirrors) {
+    const canonical = thresholds[m.ref];
+    if (canonical === undefined) {
+      fail(
+        `${m.literalPath} references threshold "${m.ref}", which does not exist in config.thresholds`,
+      );
+      continue;
+    }
+    if (canonical.value !== m.literal) {
+      fail(
+        `${m.literalPath} is ${m.literal} but config.thresholds.${m.ref}.value is ` +
+          `${canonical.value}. These must agree — the ref is the load-bearing one. ` +
+          `Update both, then re-run the tests. See RUNBOOK-threshold-updates.md.`,
+      );
+    }
+  }
 }
 
 /** Load + validate the bundled v1 config. Cached (immutable). */
