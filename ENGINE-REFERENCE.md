@@ -128,19 +128,42 @@ host supplies the client. This keeps the engine dependency-light and keeps the
 browser-safe import graph clean — the same reason `JsonlStorageAdapter` imports
 `node:fs` lazily.
 
+### What actually writes the rows
+
+**Paid engagements only** (decided 15 Aug 2026). Anonymous free-tier snapshots do
+NOT accrue records: capturing them would require a browser-reachable write
+endpoint, and since this table is append-only, a public write path is an
+unfixable pollution vector.
+
+The writer is a nightly Vercel Cron sweep in the SPA repo —
+`api/cron/benchmark-sync.js`. It lists active, letter-signed engagements from
+Airtable, runs `assess()` over each, and appends one row per engagement. It is
+closed by a `CRON_SECRET` bearer check, and closed *by default*: an unset secret
+returns 503 rather than running open.
+
+The sweep is safe to run over everything every night. The unique key is
+`(asset_hash, assessment_date, config_version)` and `assessment_date` derives
+from the engagement's stable intake timestamp, so re-processing is a no-op.
+
 ### Setup checklist
 
-1. Provision Vercel Postgres on the `perennity-capital-readiness-platform`
-   project. *(Human — provisioning is billable.)*
-2. Apply `infra/benchmark/001_benchmark_records.sql`.
+1. Provision Postgres on the `perennity-capital-readiness-platform` project
+   (Vercel dashboard → Storage → Create Database → Neon). *(Human — billable.)*
+   The integration creates `POSTGRES_URL` automatically.
+2. Apply `infra/benchmark/001_benchmark_records.sql` via the Neon SQL editor.
 3. Uncomment and run the `REVOKE`/`GRANT` lines with your actual app role
    (`SELECT current_user;`).
-4. Set `PERENNITY_BENCHMARK_SALT` in Vercel project env vars. *(Human — an agent
-   must never handle the secret value.)* Generate with:
-   `openssl rand -base64 32`
-5. Verify: run one assessment, then
-   `SELECT count(*), max(inserted_at) FROM benchmark_records;` → expect 1.
-6. Verify append-only: `UPDATE benchmark_records SET region = 'X';` → expect an
+4. Set `PERENNITY_BENCHMARK_SALT` in Vercel env vars, Production, sensitive.
+   *(Human — an agent must never handle the secret value.)* Generate with
+   `openssl rand -base64 32`. ✅ *Done 15 Aug 2026.*
+5. Set `CRON_SECRET` the same way. Vercel attaches it as a bearer token on cron
+   invocations; without it the endpoint refuses every request.
+6. Verify the endpoint is closed: `curl <url>/api/cron/benchmark-sync` → expect
+   `401` (or `503` if step 5 is not yet done).
+7. Verify a run: invoke with the bearer token, then
+   `SELECT count(*), max(inserted_at) FROM benchmark_records;`
+8. Verify idempotency: invoke twice, confirm the count does not change.
+9. Verify append-only: `UPDATE benchmark_records SET region = 'X';` → expect an
    exception.
 
 ---
