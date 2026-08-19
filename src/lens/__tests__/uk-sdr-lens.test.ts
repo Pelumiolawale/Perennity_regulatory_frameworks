@@ -3,6 +3,8 @@
 // row; asset-level vs fund-level distinction preserved.
 
 import { strict as assert } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import type {
   CanonicalAssessment,
@@ -111,4 +113,57 @@ test("Mixed Goals qualifies when two+ labels fit", () => {
   const mixed = v.sections.find((s) => s.id === "label_mixed_goals")!;
   assert.equal(mixed.status, "pass");
   assert.equal(v.headlineLabel, "Sustainability Mixed Goals");
+});
+
+// -- Threshold source-scan guard (review-pack Finding 2) ---------------------
+//
+// euLens.ts is guarded by a test that fails on ANY numeric comparison against a
+// literal >= 2, because every real SFDR 2.0 threshold must come from config.
+// ukSdrLens.ts had no equivalent, so a calibration threshold could be hardcoded
+// here and nothing would notice.
+//
+// The UK lens legitimately contains a few numeric comparisons, but they are
+// STRUCTURAL DEFINITIONS rather than calibrations: "Mixed Goals means a blend of
+// two or more objectives" is how FCA PS23/16 defines the label, not a tunable
+// number, and it will not move in a trilogue. So a blanket ban would be wrong.
+//
+// Instead this pins the exact set. Anything new fails the test, which forces the
+// author to either move the value into config or justify it by adding it here
+// with a reason. Silence is what we are removing, not numbers.
+
+test("no UNDECLARED numeric thresholds in UK SDR lens logic (source scan)", () => {
+  const src = readFileSync(join(__dirname, "..", "ukSdrLens.ts"), "utf8");
+  const code = src
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "")
+    .replace(/`(?:\\.|[^`\\])*`/g, "``")
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/"(?:\\.|[^"\\])*"/g, '""');
+
+  // Every numeric comparison currently in the file, each structural.
+  const DECLARED = [
+    // Full set of three credibility signals (capex-linked, dated, board-approved).
+    // Counts array members; not a threshold.
+    "=== 3",
+    // At least one credibility signal present — structural floor, not calibration.
+    ">= 1",
+    // Mixed Goals requires a blend of two or more labels. FCA PS23/16 definition.
+    ">= 2",
+  ];
+
+  const found = (code.match(/[<>]=?\s*\d+(?:\.\d+)?|[!=]==?\s*\d+(?:\.\d+)?/g) ?? []).map(
+    (m) => m.replace(/\s+/g, " ").trim(),
+  );
+  const undeclared = found.filter((m) => !DECLARED.includes(m));
+  assert.deepEqual(
+    undeclared,
+    [],
+    `undeclared numeric comparison(s) in ukSdrLens.ts: ${undeclared.join(", ")}. ` +
+      "Move the value into config/regulatory-thresholds.*.json, or add it to " +
+      "DECLARED here with a comment explaining why it is structural.",
+  );
+
+  // Decimal literals are never structural — PUE/WUE-style values belong in config.
+  const decimals = code.match(/(?<![\w.])\d+\.\d+/g) ?? [];
+  assert.deepEqual(decimals, [], `decimal literal(s) in UK lens code: ${decimals.join(", ")}`);
 });
