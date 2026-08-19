@@ -6,7 +6,7 @@ This file gives Claude Code persistent context for the engine repo. It is loaded
 
 A deterministic regulatory scoring engine for sustainable finance gap assessment, packaged as `@perennity/engine`. Two outputs from one engine: a free Snapshot (diagnostic) and a paid Project Readiness Report (attestation, signed by Dolapo). The engine is the IP being built toward acquisition by a regulated-finance ratings/data buyer.
 
-Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via git-URL pin to this repo's `main`. Currently shipping v0.5.0-alpha.8 (Phase 0 complete + Phase 1 commits 1.0 → 1.4.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, canonical RenderContract + FMP-ready PAI data file as first-class engine outputs, BUNDLED_SFDR_FRAMEWORKS for browser-safe consumption, and engine cleanup: v3.2 anyOf removed + Phase 0 fixtures migrated + framework JSON stamps refreshed to v3.5). ICMA GBP lands in Phase 3.
+Consumed by the customer-facing app at `https://github.com/Pelumiolawale/perennity-capital-readiness-platform` via a git-URL pin to a **fixed ref** (currently `#v0.6.2`), NOT to this repo's `main` — see "Package versioning" for why that distinction matters. `main` is at v4.0.0-alpha.1 (lens architecture; unpublished pre-release). The historical summary below describes v0.5.0-alpha.8 (Phase 0 complete + Phase 1 commits 1.0 → 1.4.1 — multi-archetype framework schema, three input axes, HeatmapCell archetype discriminator, snapshot single-label filter, SFDR label version-stamping, SFDR Articles 8 + 9 fully scored under methodology v3.5 with deterministic five-band verdicts, pressure-test calibration refinements F2–F7 applied, canonical RenderContract + FMP-ready PAI data file as first-class engine outputs, BUNDLED_SFDR_FRAMEWORKS for browser-safe consumption, and engine cleanup: v3.2 anyOf removed + Phase 0 fixtures migrated + framework JSON stamps refreshed to v3.5). ICMA GBP lands in Phase 3.
 
 ## Architecture rule (non-negotiable)
 
@@ -50,10 +50,12 @@ Flat single-package, NOT a monorepo:
 
 Name: `@perennity/engine` (private, version 0.4.0).
 
-Consumed by the app via:
+Consumed by the app via a git-URL pin to a **fixed ref**, not a branch:
 ```
-"@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#main"
+"@perennity/engine": "github:Pelumiolawale/Perennity_regulatory_frameworks#v0.6.2"
 ```
+(As of 19 Aug 2026 the SPA's `feat/engine-v4-adapter` branch pins the v4 merge
+commit `#d54e38a`; production remains on `#v0.6.2` until that branch merges.)
 
 The `prepare` script builds `dist/` on install, so consumers don't need TypeScript locally.
 
@@ -693,7 +695,9 @@ Every PDF (both tiers, rendered by the app) carries the EU Taxonomy Regulation A
 
 Single-developer flow. Direct-push to `main` on this repo (no PR review process). Feature branches OK locally for non-trivial work.
 
-The app pins to `#main`, so any push to `main` here is consumable by the app on its next `npm install @perennity/engine`. Bump the engine version in `package.json` to trigger reliable cache invalidation — npm sometimes skips SHA-only changes on git-URL deps, and the consumer's `vercel.json` enforces `npm ci` as a CI-side backstop.
+**The app does NOT pin `#main`** — it pins a fixed ref (see "Public package shape"). A push to `main` here therefore does **not** reach the app; the SPA only moves when someone deliberately bumps its pin. This is the opposite of what this file claimed until 19 Aug 2026, and the difference matters: pushing to `main` is safe, and shipping to the app is a separate, deliberate act.
+
+When you do bump the pin, bump the engine version in `package.json` to trigger reliable cache invalidation — npm sometimes skips SHA-only changes on git-URL deps, and the consumer's `vercel.json` enforces `npm ci` as a CI-side backstop.
 
 ## What lives in the regulatory-knowledge library
 
