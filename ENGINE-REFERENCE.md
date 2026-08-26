@@ -145,19 +145,48 @@ The sweep is safe to run over everything every night. The unique key is
 `(asset_hash, assessment_date, config_version)` and `assessment_date` derives
 from the engagement's stable intake timestamp, so re-processing is a no-op.
 
+### Live since 26 August 2026
+
+Benchmark collection is **live in production**. First sweep processed 15 active
+signed engagements with zero failures. A second consecutive run produced no
+additional rows, confirming deduplication holds.
+
+| | |
+|---|---|
+| Cron | `/api/cron/benchmark-sync`, nightly 03:00 UTC |
+| Scope | Active engagements with a signed letter. Drafts and prospects excluded. |
+| Engine | v4.0.0-alpha.1 |
+| Rows after first run | 15 (+1 leftover setup test row, `region = 'TEST'`) |
+
+**Reading the log line.** The sweep reports `emitted` (appends that did not
+error), `inserted` (rows actually added) and `duplicates` (skipped as already
+present). Only `inserted` answers "did anything new get stored" — `emitted` looks
+identical on a first run and a re-run, because `ON CONFLICT DO NOTHING` succeeds
+silently. A healthy nightly run over unchanged engagements shows `inserted: 0`.
+
 ### Setup checklist
 
 1. Provision Postgres on the `perennity-capital-readiness-platform` project
    (Vercel dashboard → Storage → Create Database → Neon). *(Human — billable.)*
-   The integration creates `POSTGRES_URL` automatically.
+   The integration creates `POSTGRES_URL` automatically. ✅ *Done 26 Aug 2026.*
 2. Apply `infra/benchmark/001_benchmark_records.sql` via the Neon SQL editor.
-3. Uncomment and run the `REVOKE`/`GRANT` lines with your actual app role
-   (`SELECT current_user;`).
+   ✅ *Done 26 Aug 2026.*
+3. **Skip the `REVOKE`/`GRANT` lines** unless a separate application role
+   exists. Neon-via-Vercel gives a single role that also OWNS the table, and a
+   Postgres owner can re-grant privileges to itself — so revoking from it looks
+   like enforcement without being it. The append-only TRIGGER is the real
+   protection: it fires for every role, owner included. Verify it is enabled:
+   ```sql
+   SELECT tgname, tgenabled FROM pg_trigger
+   WHERE tgrelid = 'benchmark_records'::regclass AND NOT tgisinternal;
+   ```
+   `tgenabled` must be `O`. `D` means protection is switched off.
 4. Set `PERENNITY_BENCHMARK_SALT` in Vercel env vars, Production, sensitive.
    *(Human — an agent must never handle the secret value.)* Generate with
    `openssl rand -base64 32`. ✅ *Done 15 Aug 2026.*
 5. Set `CRON_SECRET` the same way. Vercel attaches it as a bearer token on cron
    invocations; without it the endpoint refuses every request.
+   ✅ *Done 26 Aug 2026.*
 6. Verify the endpoint is closed: `curl <url>/api/cron/benchmark-sync` → expect
    `401` (or `503` if step 5 is not yet done).
 7. Verify a run: invoke with the bearer token, then
