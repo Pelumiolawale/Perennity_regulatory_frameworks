@@ -60,6 +60,46 @@ export class PostgresStorageAdapter implements StorageAdapter {
   readonly name = "vercel_postgres";
   private readonly statement: string;
 
+  // ---------------------------------------------------------------------
+  // Insert accounting.
+  //
+  // `ON CONFLICT DO NOTHING` SUCCEEDS SILENTLY when it inserts nothing. So a
+  // caller that counts "append() didn't throw" is counting attempts, not rows,
+  // and will report the same number on a first run and on a re-run of identical
+  // data. That makes the one thing you actually want to know — is deduplication
+  // working — invisible in the logs.
+  //
+  // We therefore read the driver's reported rowCount. When the client doesn't
+  // report one we flag it as UNKNOWN rather than assuming zero or one, because
+  // a silently wrong count is worse than an honestly absent one.
+  // ---------------------------------------------------------------------
+  private _attempted = 0;
+  private _inserted = 0;
+  private _rowCountUnknown = false;
+
+  /** append() calls that completed without throwing. */
+  get attemptedCount(): number {
+    return this._attempted;
+  }
+
+  /** Rows the database reported as actually inserted. Excludes conflicts. */
+  get insertedCount(): number {
+    return this._inserted;
+  }
+
+  /** Rows skipped because they already existed (attempted minus inserted). */
+  get duplicateCount(): number {
+    return this._attempted - this._inserted;
+  }
+
+  /**
+   * True when at least one query returned no rowCount, so `insertedCount` is a
+   * lower bound rather than a fact. Report this rather than hiding it.
+   */
+  get rowCountUnknown(): boolean {
+    return this._rowCountUnknown;
+  }
+
   constructor(
     private readonly client: SqlClient,
     opts: PostgresStorageAdapterOptions = {},
@@ -70,7 +110,7 @@ export class PostgresStorageAdapter implements StorageAdapter {
   }
 
   async append(record: BenchmarkRecord): Promise<void> {
-    await this.client.query(this.statement, [
+    const result = await this.client.query(this.statement, [
       record.schemaVersion,
       record.assetHash,
       record.region,
@@ -81,5 +121,10 @@ export class PostgresStorageAdapter implements StorageAdapter {
       JSON.stringify(record.metrics),
       JSON.stringify(record.lensHeadlines),
     ]);
+    this._attempted += 1;
+    const rowCount = (result as { rowCount?: number | null } | null | undefined)
+      ?.rowCount;
+    if (typeof rowCount === "number") this._inserted += rowCount;
+    else this._rowCountUnknown = true;
   }
 }
