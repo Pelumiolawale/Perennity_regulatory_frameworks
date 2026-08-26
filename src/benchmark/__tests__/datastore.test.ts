@@ -226,7 +226,13 @@ test("PostgresStorageAdapter honours a table override", async () => {
     },
     { table: "benchmark_records_staging" },
   );
-  await adapter.append({
+  await adapter.append(mkRecord());
+  assert.match(calls[0], /benchmark_records_staging/);
+});
+
+/** A minimal, correctly-typed record for adapter accounting tests. */
+function mkRecord(): BenchmarkRecord {
+  return {
     schemaVersion: "1.0.0",
     assetHash: "bh1:abc",
     region: "MENA",
@@ -236,6 +242,56 @@ test("PostgresStorageAdapter honours a table override", async () => {
     configVersion: "v1",
     metrics: {} as BenchmarkRecord["metrics"],
     lensHeadlines: [],
+  };
+}
+
+// -- Insert accounting ------------------------------------------------------
+//
+// ON CONFLICT DO NOTHING succeeds silently when it inserts nothing, so counting
+// "append() didn't throw" reports identical numbers for a first run and a
+// re-run. These tests pin the distinction, because it is the only signal that
+// tells you deduplication is working.
+
+test("adapter counts ACTUAL inserts, not attempts", async () => {
+  // Driver reports 1 row inserted, then 0 (conflict), then 0 (conflict).
+  const rowCounts = [1, 0, 0];
+  let i = 0;
+  const adapter = new PostgresStorageAdapter({
+    async query() {
+      return { rowCount: rowCounts[i++] };
+    },
   });
-  assert.match(calls[0], /benchmark_records_staging/);
+  const rec = mkRecord();
+  await adapter.append(rec);
+  await adapter.append(rec);
+  await adapter.append(rec);
+
+  assert.equal(adapter.attemptedCount, 3, "three calls made");
+  assert.equal(adapter.insertedCount, 1, "only one row actually inserted");
+  assert.equal(adapter.duplicateCount, 2, "two were conflicts");
+  assert.equal(adapter.rowCountUnknown, false);
+});
+
+test("a re-run of identical data inserts nothing and says so", async () => {
+  const adapter = new PostgresStorageAdapter({
+    async query() {
+      return { rowCount: 0 };
+    },
+  });
+  const rec = mkRecord();
+  await adapter.append(rec);
+  await adapter.append(rec);
+  assert.equal(adapter.insertedCount, 0, "nothing new written on a re-run");
+  assert.equal(adapter.duplicateCount, 2);
+});
+
+test("a client that reports no rowCount is flagged UNKNOWN, not assumed zero", async () => {
+  const adapter = new PostgresStorageAdapter({
+    async query() {
+      return {}; // no rowCount — e.g. an unfamiliar driver
+    },
+  });
+  await adapter.append(mkRecord());
+  assert.equal(adapter.rowCountUnknown, true, "honesty about not knowing");
+  assert.equal(adapter.attemptedCount, 1);
 });
