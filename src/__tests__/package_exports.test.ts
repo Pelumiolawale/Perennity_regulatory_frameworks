@@ -12,7 +12,7 @@
 // sector-material categories, the material PAI numbers — each one a hand-
 // maintained mirror of a file this package already ships, and each one able to
 // drift silently. Its tests had resorted to `fs.readFileSync` against a path
-// walked from `require.resolve("@perennity/engine/package.json")`, which works
+// walked from `resolveFrom.resolve("@perennity/engine/package.json")`, which works
 // at test time and is unavailable in a browser bundle.
 //
 // Declaring the subpaths costs nothing and turns those mirrors into reads.
@@ -25,11 +25,20 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import path from "node:path";
 
-const require = createRequire(import.meta.url);
+// This package compiles to CommonJS (tsconfig module: commonjs), where `require`
+// is a reserved identifier at module scope and `import.meta` is unavailable.
+// Resolve from the package root instead, which is also what the other tests in
+// this repo do for file access — see sfdr/__tests__/constants-parity.test.ts.
+//
+// createRequire rather than fs, deliberately: reading the file off disk would
+// pass whether or not the exports map allows it, and the exports map is the
+// entire subject of these tests.
+const resolveFrom = createRequire(path.join(process.cwd(), "package.json"));
 
 test("regulatory-knowledge constants resolve through the exports map", () => {
-  const path = require.resolve(
+  const path = resolveFrom.resolve(
     "@perennity/engine/regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json",
   );
   assert.ok(
@@ -39,7 +48,7 @@ test("regulatory-knowledge constants resolve through the exports map", () => {
 });
 
 test("the resolved constant is the real file, not an empty stub", () => {
-  const annexI = require("@perennity/engine/regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json");
+  const annexI = resolveFrom("@perennity/engine/regulatory-knowledge/constants/eu_non_cooperative_jurisdictions.json");
   assert.equal(annexI.kind, "eu_non_cooperative_jurisdictions");
   assert.ok(Array.isArray(annexI.annex_i));
   assert.ok(annexI.annex_i.length > 0);
@@ -58,14 +67,14 @@ test("every shipped constants file is reachable", () => {
     "uk_sdr_v1_credible_standards_data_centre.json",
   ]) {
     assert.doesNotThrow(
-      () => require(`@perennity/engine/regulatory-knowledge/constants/${file}`),
+      () => resolveFrom(`@perennity/engine/regulatory-knowledge/constants/${file}`),
       `${file} should be reachable through the exports map`,
     );
   }
 });
 
 test("config thresholds resolve too", () => {
-  const thresholds = require("@perennity/engine/config/regulatory-thresholds.v1.json");
+  const thresholds = resolveFrom("@perennity/engine/config/regulatory-thresholds.v1.json");
   assert.equal(typeof thresholds, "object");
   assert.notEqual(thresholds, null);
 });
@@ -74,7 +83,7 @@ test("an undeclared subpath is still blocked", () => {
   // The exports map remains an allowlist. src/ is not shipped and must not
   // become reachable by accident.
   assert.throws(
-    () => require("@perennity/engine/src/sfdr/constants.ts"),
+    () => resolveFrom("@perennity/engine/src/sfdr/constants.ts"),
     /ERR_PACKAGE_PATH_NOT_EXPORTED|Cannot find module/,
   );
 });
