@@ -1,7 +1,7 @@
 {
   "name": "@perennity/engine",
-  "version": "4.0.0-alpha.1",
-  "description": "Perennity Bridge deterministic scoring engine — v3.5 legacy path (EU Taxonomy 8.1 + SFDR Art 8/9 + UK SDR) + v4.0 framework-modular lens architecture (MetricsCore + SFDR 2.0 / UK SDR / US lenses)",
+  "version": "4.0.0-alpha.2",
+  "description": "Perennity Bridge deterministic scoring engine \u2014 v3.5 legacy path (EU Taxonomy 8.1 + SFDR Art 8/9 + UK SDR) + v4.0 framework-modular lens architecture (MetricsCore + SFDR 2.0 / UK SDR / US lenses)",
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,6 +14,8 @@
       "types": "./dist/v4/index.d.ts",
       "default": "./dist/v4/index.js"
     },
+    "./regulatory-knowledge/*": "./regulatory-knowledge/*",
+    "./config/*": "./config/*",
     "./package.json": "./package.json"
   },
   "files": [
